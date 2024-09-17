@@ -66,27 +66,28 @@ def run_experiment(
         experiment_dir = os.path.dirname(experiment_dir)
 
         # Insert side experiment default config to be applied before any overrides
-        configs.insert(0, os.path.join(experiment_dir, name + '.config'))
+        configs.insert(0, name + '.config')
     else:
         # Main experiment was specified
         experiment_file = os.path.join(experiment_dir, name)
 
     # Insert default config to be applied first
-    configs.insert(0, os.path.join(experiment_dir, 'config'))
-
+    configs.insert(0, 'config')
     # Load experiment module and find experiment class
-    experiment_module_name = '.'.join(os.path.split(experiment_file))
+    experiment_module_name = '.'.join(os.path.normpath(experiment_file).split(os.sep))
     experiment_module = importlib.import_module(experiment_module_name)
     for var in vars(experiment_module).values():
-        if isinstance(var, experiments.Experiment):
-            experiment = var
-            break
+        try:
+            if issubclass(var, experiments.Experiment):
+                experiment = var()
+                break
+        except TypeError:
+            continue
     else:
         raise ValueError('No experiment class present in the given experiment module.')
 
     # Get base config
     base_config = utils.config.load_base_config()
-    utils.config.load_config(os.path.join(experiment_dir, ''))
     for config_file in configs:
         config = utils.config.load_config(os.path.join(experiment_dir, config_file))
         utils.config.config_update_recursive(base_config, config, default_option='add')
@@ -95,14 +96,26 @@ def run_experiment(
     if group is None:
         experiment.run(base_config)
     else:
-        for config_file in group:
+        # Load group configurations
+        group_configs = []
+        for file in os.listdir(os.path.join(experiment_dir, group)):
+            try:
+                config = utils.config.load_config(
+                    os.path.join(experiment_dir, group, file),
+                    raise_exc=True
+                )
+                config['group_id'] = os.path.splitext(file)[0]
+                group_configs.append(config)
+            except utils.config.ConfigNotFoundError:
+                print('Failed')
+
+        # Run experiments
+        for config in group_configs:
             # Load run config and override base config. Make sure to deeply copy
             # base config so that options from one run don't bleed into
             # subsequent ones
             run_config = copy.deepcopy(base_config)
-            config = utils.config.load_config(os.path.join(experiment_dir, config_file))
             utils.config.config_update_recursive(run_config, config, default_option='add')
-
             experiment.run(run_config)
 
 
