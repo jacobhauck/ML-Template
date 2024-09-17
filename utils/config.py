@@ -75,31 +75,53 @@ def config_update_recursive(
                 base_config[key] = copy.deepcopy(value)
 
 
-def load_config(path) -> dict:
+class ConfigNotFoundError(BaseException):
+    pass
+
+
+def load_config(path, raise_exc=False) -> dict:
     """
     Load a config file into a dict.
 
     :param path: Path to config file. Must be either JSON or YAML file. File
         type will be inferred if no extension is present.
+    :param raise_exc: Whether to raise an exception if the requested file does
+        not exist.
     :return: dict object containing configuration options from the file. Empty
-        dict if the file does not exist.
+        dict if the file does not exist, or an exception is thrown if raise_exc.
     """
-    if os.path.splitext(path)[1] not in ('yaml', 'json'):
+    if os.path.splitext(path)[1].lower() not in ('.yaml', '.yml', '.json'):
         if os.path.exists(path + '.yaml'):
             path = path + '.yaml'
+        elif os.path.exists(path + '.yml'):
+            path = path + '.yml'
         elif os.path.exists(path + '.json'):
             path = path + '.json'
         else:
+            if raise_exc:
+                raise ConfigNotFoundError(f'Config {path} not found.')
             return {}
 
     ext = os.path.splitext(path)[1]
-    if ext.lower() == '.yaml':
+    if ext.lower() in ('.yaml', '.yml'):
         with open(path, 'r') as f:
-            return yaml.safe_load(f)
+            result = yaml.safe_load(f)
+            return result if result is not None else {}
     elif ext.lower() == '.json':
         with open(path, 'r') as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.decoder.JSONDecodeError as e:
+                saved_exception = e
+
+        with open(path, 'r') as f:
+            if f.read() == '':
+                return {}
+
+        raise saved_exception
     else:
+        if raise_exc:
+            raise ConfigNotFoundError(f'Config {path} not found.')
         return {}
 
 
