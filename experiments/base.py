@@ -6,7 +6,7 @@ Classes
     - Experiment
 """
 import abc
-from typing import MutableMapping
+from typing import Mapping
 
 
 class Experiment(abc.ABC):
@@ -18,5 +18,5 @@ class Experiment(abc.ABC):
     """
 
     @abc.abstractmethod
-    def run(self, config: MutableMapping) -> None:
+    def run(self, config: Mapping) -> None:
         raise NotImplemented
