@@ -125,8 +125,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--group', '-g',
         help='Optional directory of config file, with each '
-             'of which the experiment will be run.'
+             'of which the experiment will be run.',
+        default=None
     )
 
     args = parser.parse_args()
-    run_experiment(args.name, args.configs, getattr(args, 'group', None))
+    run_experiment(args.name, args.configs, args.group)
