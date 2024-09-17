@@ -56,10 +56,12 @@ def config_update_recursive(
                 option = default_option
 
             if option == 'add':
-                print(f'Adding override key {key}')
+                if default_option is None:
+                    print(f'Adding override key {key}')
                 base_config[key] = copy.deepcopy(override_config[key])
             elif option == 'ignore':
-                print(f'Ignoring override key {key}')
+                if default_option is None:
+                    print(f'Ignoring override key {key}')
                 continue
             elif option == 'cancel':
                 print('Exiting')
