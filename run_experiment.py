@@ -60,16 +60,17 @@ def run_experiment(
     # Determine experiment location and whether a main or side experiment was
     # specified
     experiment_dir = os.path.join('experiments', name)
-    if os.path.isfile(experiment_dir):
+    local_id = os.path.split(name)[-1]
+    if os.path.isfile(experiment_dir + '.py'):
         # Side experiment was specified
         experiment_file = experiment_dir
         experiment_dir = os.path.dirname(experiment_dir)
 
         # Insert side experiment default config to be applied before any overrides
-        configs.insert(0, name + '.config')
+        configs.insert(0, local_id + '.config')
     else:
         # Main experiment was specified
-        experiment_file = os.path.join(experiment_dir, name)
+        experiment_file = os.path.join(experiment_dir, local_id)
 
     # Insert default config to be applied first
     configs.insert(0, 'config')
