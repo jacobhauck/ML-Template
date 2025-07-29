@@ -3,6 +3,37 @@ from typing import Sequence, Mapping
 import utils
 
 
+class BufferDict(torch.nn.Module):
+    def __init__(self, input_dict):
+        super().__init__()
+        self.input_names = set(input_dict)
+        for k, v in input_dict.items():
+            self.register_buffer(k, v)
+
+    def __len__(self):
+        return len(self.input_names)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
+    def __contains__(self, item):
+        return item in self.input_names
+
+    def items(self):
+        for name in self.input_names:
+            yield name, getattr(self, name)
+
+    def keys(self):
+        yield from self.input_names
+
+    def values(self):
+        for name in self.input_names:
+            yield getattr(self, name)
+
+
 class MLP(torch.nn.Module):
     def __init__(
             self,
