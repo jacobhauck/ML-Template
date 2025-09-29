@@ -1,5 +1,5 @@
 import importlib
-import torch
+
 import mlx.modules
 from typing import Mapping
 
@@ -21,7 +21,8 @@ def create_module(config: Mapping):
         following:
         - the Module's name in torch.nn,
         - the Module's name in mlx.modules,
-        - or the Module's name within the project `modules` directory.
+        - the Module's name as a global import,
+        - or the Module's name as an import relative to the `modules` package.
     :return: An instance of the Module specified by the given configuration
         settings.
     """
@@ -30,18 +31,29 @@ def create_module(config: Mapping):
 
     try:
         # Standard torch module
-        return getattr(torch.nn, name_str)
+        import torch
+        return getattr(torch.nn, name_str)(**config)
     except AttributeError:
         pass
 
     try:
         # mlx built-in module
-        return getattr(mlx.modules, name_str)
+        return getattr(mlx.modules, name_str)(**config)
     except AttributeError:
         pass
 
-    # Otherwise look for user-defined module
-    name = ['modules'] + name_str.split('.')
-    py_module = importlib.import_module('.'.join(name[:-1]))
+    # Global import
+    try:
+        name = name_str.split('.')
+        py_module = importlib.import_module('.'.join(name[:-1]))
+        return getattr(py_module, name[-1])(**config)
+    except ModuleNotFoundError:
+        pass
 
-    return getattr(py_module, name[-1])(**config)
+    # User-defined module in modules
+    try:
+        name = ['modules'] + name_str.split('.')
+        py_module = importlib.import_module('.'.join(name[:-1]))
+        return getattr(py_module, name[-1])(**config)
+    except ModuleNotFoundError:
+        raise ValueError('Invalid Module')

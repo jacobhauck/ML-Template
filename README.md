@@ -1,17 +1,28 @@
 # ML-Template
-Template repository for machine learning research projects.
-
+Basic package for machine learning research projects.
 
 ## Getting Started
 
-### Requirements
+### Installing
 
-After cloning this template repository, you should install
-the default requirements (you can modify them to suit your needs first) using
-the command
+After cloning this template repository, you can install with
 ```commandline
-pip install -r requirements.txt
+pip install .
 ```
+This package relies on PyTorch; however, I have opted not to require a specific
+version, so you should install whichever version is applicable to you from 
+[here](https://pytorch.org/get-started/locally/).
+
+### Weights and Biases
+
+This repository optionally uses [Weights and Biases](https://wandb.ai) to log 
+runs. To set up your own project to log to, create a file in your project called
+`wandb_config.yaml` and fill in the fields as demonstrated in the same example
+file in this repository. If you want to run an experiment that logs 
+automatically to Weights and Biases, just inherit from `mlx.WandBExperiment`
+instead of `mlx.Experiment` (see **Experiments**). You can also run
+`mlx.WandBExperiment`'s without logging by adding the config option 
+`use_wandb` and setting it to `false` (see **Configuration**).
 
 ### Experiments
 
@@ -27,16 +38,16 @@ name is the same as the name of the experiment package in `experiments`.
 
 To define your experiment, add a Python module `<experiment name>.py` to the
 experiment pacakge, where `<experiment name>` is the experiment name. Then, 
-create a class in this package that derives from `experiments.Experiment`. An
+create a class in this package that derives from `mlx.Experiment`. An
 experiment named `demo` is already provided as a demonstration of this 
 structure.
 
 ### Running experiments
 
-To run an experiment, use the `run_experiment` command with the name of the
+To run an experiment, use the `mlx.run` command with the name of the
 experiment. For example, to run the `demo` experiment, use
 ```commandline
-python -m run_experiment demo
+python -m mlx.run demo
 ```
 
 ### Configuration
@@ -46,7 +57,7 @@ experiment **configuration**. Configuration must be a Python `dict` that can
 be serialized into JSON or YAML. As such, configuration is specified using JSON
 or YAML files.
 
-The `run_experiment` command searches for configuration files in the following
+The `mlx.run` command searches for configuration files in the following
 locations:
 
 - `config.(yaml|json)`, which contains project global configuration
@@ -100,11 +111,11 @@ as would be the case if options were overridden only at the top level.
 
 To specify additional override configuration files, provide their names
 (with or without file extension; path to the file relative to the experiment
-directory will also work) as extra arguments to the `run_experiment`
+directory will also work) as extra arguments to the `mlx.run`
 command. For example, the `demo` experiment provides an extra configuration file
 named `other.yaml`, so we can run `demo` using this override by using
 ```commandline
-python -m run_experiment demo other
+python -m mlx.run demo other
 ```
 Any number of additional override files may be specified, and they will override
 the global and experiment default configuration in the order they are given.
@@ -112,20 +123,20 @@ the global and experiment default configuration in the order they are given.
 ### Configuration groups
 
 It is often necessary to run the same experiment with many slightly different
-configurations. This can be achieved in one command with `run_experiment` by
+configurations. This can be achieved in one command with `mlx.run` by
 using **configuration groups**. A configuration group is a set of configuration
 files grouped together in one directory. If an experiment is run with a 
 configuration group, then it will be run once for each configuration file in the
 group, with the options from that file overriding any other configuration
-specified in `run_experiment`. 
+specified in `mlx.run`. 
 
 To run an experiment with a configuration group, use the optional `--group`
-argument of `run_experiment` to specify the location of the configuration group
+argument of `mlx.run` to specify the location of the configuration group
 directory relative to the experiment directory. For example, the `demo`
 experiment has a configuration group called `test_group`. To run the `demo`
 experiment for this configuration group we use
 ```commandline
-python -m run_experiment demo --group test_group
+python -m mlx.run demo --group test_group
 ```
 Note that the option `group_id` will be added to the configuration of each
 run in an experiment group, with the value being the name of the corresponding 
@@ -137,7 +148,7 @@ provide the name `other` as an additional argument, as before, noting that
 additional override configuration files must be specified _before_ `--group`,
 as follows
 ```commandline
-python -m run_experiment demo other --group test_group
+python -m mlx.run demo other --group test_group
 ```
 
 ### Side experiments
@@ -151,7 +162,7 @@ called the **main experiment**
 A side experiment's name is given by the main experiment's name followed by a
 forward slash (or the system file separator character) and then an identifier
 for the side experiment. To define a side  experiment, create a subclass of 
-`experiments.Experiment` in a module in the main experiment package that has 
+`mlx.Experiment` in a module in the main experiment package that has 
 the same name as the identifier of the side experiment. For example, the `demo`
 experiment has a side experiment named `demo/side`, which is implemented in the
 file `experiments/demo/side.py`.
@@ -159,7 +170,7 @@ file `experiments/demo/side.py`.
 Side experiments can be run in exactly the same way that normal experiments
 are run. For example, to run the `demo/side` experiment, use
 ```commandline
-python -m run_experiment demo/side
+python -m mlx.run demo/side
 ```
 Configuration is specified to side experiments using the same arguments and
 conventions that apply to main experiments; however, after the experiment
@@ -178,24 +189,24 @@ convention it is possible to nest sub-experiments as deeply as one likes.
 
 If a side experiment and sub-experiment of the same local identifier exist within
 the same main experiment package, creating a naming ambiguity, then the side
-experiment will be given precedence by`run_experiment`. Side experiments can be
+experiment will be given precedence by `mlx.run`. Side experiments can be
 placed within sub-experiments, and in this case the name of the side experiment
 is still its path relative to the `experiments` directory.
 
 The `demo` experiment has a sub-experiment named `demo/sub`, which we can run
 using
 ```commandline
-python -m run_experiment demo/sub
+python -m mlx.run demo/sub
 ```
 The `demo/sub` sub-experiment has its own side experiment named `demo/sub/side`,
 which we can run with
 ```commandline
-python -m run_experiment demo/sub/side
+python -m mlx.run demo/sub/side
 ```
 Note that, unlike side experiments, the parent experiment default configuration
 is _not_ used when running a sub-experiment. If this behavior is desired, then
 the parent configuration file must be specified manually as an optional 
 override, like so
 ```commandline
-python -m run_experiment demo/sub ../config
+python -m mlx.run demo/sub ../config
 ```
