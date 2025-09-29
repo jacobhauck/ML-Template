@@ -25,12 +25,12 @@ Script Parameters
         file.
 """
 import argparse
-from typing import Sequence
-import os
-import utils.config
-import importlib
-import experiments
 import copy
+import importlib
+import os
+from typing import Sequence
+
+import mlx
 
 
 def run_experiment(
@@ -79,7 +79,7 @@ def run_experiment(
     experiment_module = importlib.import_module(experiment_module_name)
     for var in vars(experiment_module).values():
         try:
-            if issubclass(var, experiments.Experiment):
+            if issubclass(var, mlx.Experiment):
                 experiment = var()
                 break
         except TypeError:
@@ -88,10 +88,10 @@ def run_experiment(
         raise ValueError('No experiment class present in the given experiment module.')
 
     # Get base config
-    base_config = utils.config.load_base_config()
+    base_config = mlx.config.load_base_config()
     for config_file in configs:
-        config = utils.config.load_config(os.path.join(experiment_dir, config_file))
-        utils.config.config_update_recursive(base_config, config, default_option='add')
+        config = mlx.config.load_config(os.path.join(experiment_dir, config_file))
+        mlx.config.config_update_recursive(base_config, config, default_option='add')
 
     # Run experiment/experiment group
     if group is None:
@@ -101,13 +101,13 @@ def run_experiment(
         group_configs = []
         for file in os.listdir(os.path.join(experiment_dir, group)):
             try:
-                config = utils.config.load_config(
+                config = mlx.config.load_config(
                     os.path.join(experiment_dir, group, file),
                     raise_exc=True
                 )
                 config['group_id'] = os.path.splitext(file)[0]
                 group_configs.append(config)
-            except utils.config.ConfigNotFoundError:
+            except mlx.config.ConfigNotFoundError:
                 print('Failed')
 
         # Run experiments
@@ -117,14 +117,14 @@ def run_experiment(
             # base config so that options from one run don't bleed into
             # subsequent ones
             run_config = copy.deepcopy(base_config)
-            utils.config.config_update_recursive(run_config, config, default_option='add')
+            mlx.config.config_update_recursive(run_config, config, default_option='add')
             experiment.run(run_config, name=name, group=group)
         experiment.finish_group()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        prog='run_experiment',
+        prog='mlx.run',
         description='Run an experiment or a group of experiments.'
     )
 

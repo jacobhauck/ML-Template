@@ -1,6 +1,8 @@
-import torch
 from typing import Sequence, Mapping
-import utils
+
+import torch
+
+import mlx
 
 
 class BufferDict(torch.nn.Module):
@@ -66,7 +68,7 @@ class MLP(torch.nn.Module):
         architecture = (d_in,) + self.hidden_layers + (d_out,)
         for d_in, d_out in zip(architecture[:-1], architecture[1:]):
             layers.append(torch.nn.Linear(d_in, d_out, bias=bias))
-            layers.append(utils.create_activation(activation))
+            layers.append(mlx.create_module(activation))
         layers.pop()  # Remove the last activation function
 
         # Save layers as Sequential module

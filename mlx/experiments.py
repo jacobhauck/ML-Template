@@ -56,7 +56,7 @@ class _DummyRun:
         return self._attr
 
 
-class WandBExperiment(Experiment, abc.ABC):
+class WandBExperiment(Experiment):
     is_first_group_experiment = False
 
     def start_group(self):

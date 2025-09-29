@@ -1,5 +1,7 @@
 """Simple demo experiment for testing run_experiment script."""
-from experiments import WandBExperiment
+from typing import Mapping
+
+from mlx import WandBExperiment
 
 
 def _print(d, depth=0):
@@ -16,7 +18,7 @@ def _print(d, depth=0):
 class Demo(WandBExperiment):
     """Demonstration experiment that simply prints the provided config."""
 
-    def run_wandb(self, config, run):
+    def wandb_run(self, config: Mapping, run):
         print('Running demo Experiment.')
         print(run.name)
         _print(config)
