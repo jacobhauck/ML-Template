@@ -76,3 +76,10 @@ class MLP(torch.nn.Module):
 
     def forward(self, x):
         return self.layers(x)
+
+
+class RelativeL2Loss(torch.nn.Module):
+    def forward(self, x, target):
+        abs_loss = ((x - target)**2).view(x.shape[0], -1).mean(dim=1)
+        size = (target**2).view(target.shape[0], -1).mean(dim=1)
+        return (abs_loss / size).mean()
