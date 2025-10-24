@@ -43,6 +43,7 @@ class MLP(torch.nn.Module):
             hidden_layers: Sequence[int],
             d_out: int,
             activation: Mapping,
+            dropout: float | None = None,
             bias: bool = True
     ):
         """
@@ -50,8 +51,10 @@ class MLP(torch.nn.Module):
         :param d_in: input dimension
         :param hidden_layers: sequence of integers giving hidden dimensions;
             number of layers = len(hidden_layers) + 1
-        :parma d_out: output dimension
+        :param d_out: output dimension
         :param activation: Activation function config
+        :param dropout: Dropout rate for dropout applied after each layer;
+            None for no dropout. Default = None.
         :param bias: Whether to use bias in the linear layers. Default=True.
         """
         super(MLP, self).__init__()
@@ -69,7 +72,11 @@ class MLP(torch.nn.Module):
         for d_in, d_out in zip(architecture[:-1], architecture[1:]):
             layers.append(torch.nn.Linear(d_in, d_out, bias=bias))
             layers.append(mlx.create_module(activation))
-        layers.pop()  # Remove the last activation function
+            if dropout is not None:
+                layers.append(torch.nn.Dropout(dropout))
+        
+        # Remove the last activation function
+        layers.pop(-1 if dropout is None else -2)
 
         # Save layers as Sequential module
         self.layers = torch.nn.Sequential(*layers)
