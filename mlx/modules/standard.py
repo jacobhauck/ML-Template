@@ -20,6 +20,7 @@ class BufferDict(torch.nn.Module):
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
+        self.input_names.add(key)
 
     def __contains__(self, item):
         return item in self.input_names
