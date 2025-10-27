@@ -24,6 +24,12 @@ else:
     wandb_config = None
 
 
+def wandb_path():
+    global wandb_config
+    assert wandb_config is not None, 'No W&B config found!'
+    return wandb_config['entity'] + '/' + wandb_config['project']
+
+
 class Experiment(abc.ABC):
     """
     Represents a type of experiment.
@@ -80,7 +86,7 @@ class WandBExperiment(Experiment):
         else:
             api = wandb.Api()
             runs = api.runs(
-                f'{wandb_config["entity"]}/{wandb_config["project"]}',
+                wandb_path(),
                 filters=dict(
                     displayName={'$regex': rf'{name}.*'}
                 )
