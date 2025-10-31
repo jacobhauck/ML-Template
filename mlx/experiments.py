@@ -9,10 +9,15 @@ Classes
 """
 import abc
 import os
+import uuid
 from typing import Mapping
 
 import wandb
 import yaml
+
+
+CHECKPOINT_DIR = '.checkpoints'
+LOCAL_RUNS_DIR = os.path.join(CHECKPOINT_DIR, 'local')
 
 
 if os.path.exists('wandb_config.yaml'):
@@ -55,10 +60,35 @@ class _DummyRunAttribute:
         pass
 
 
-class _DummyRun:
+class LocalRun:
     _attr = _DummyRunAttribute()
 
+    def __init__(self, resume_id=None):
+        if resume_id is None:
+            self._id = str(uuid.uuid4())
+            self.resumed = False
+            self.step = 0
+        else:
+            self._id = resume_id
+            self.resumed = True
+
+            with open(self._step_file):
+                self.step = int(f.read())
+
+    @property
+    def _step_file(self):
+        return os.path.join(LOCAL_RUNS_DIR, self._id)
+
+    def log(self, *_, **__):
+        self.step += 1
+        with open(self._step_file, 'w') as step_file:
+            step_file.write(str(self.step))
+
     def __getattr__(self, item):
+        """This is a cheap way to provide some compatibility with W&B interface"""
+        if item == 'id':
+            return self._id
+
         return self._attr
 
 
@@ -73,9 +103,9 @@ class WandBExperiment(Experiment):
             'Must add properly formed wandb_config.yaml file to run W&B experiments'
 
         if 'use_wandb' in config and not config['use_wandb']:
-            run = _DummyRun()
-        elif 'wandb_run_id' in config:
-            run_id = config['wandb_run_id']
+            run = LocalRun(resume_id=config.get('resume_id'))
+        elif 'resume_id' in config:
+            run_id = config['resume_id']
             run = wandb.init(
                 entity=wandb_config['entity'],
                 project=wandb_config['project'],
@@ -117,3 +147,13 @@ class WandBExperiment(Experiment):
     @abc.abstractmethod
     def wandb_run(self, config: Mapping, run) -> None:
         raise NotImplemented
+
+
+class TrainingExperiment(WandBExperiment):
+    def wandb_run(self, config: Mapping, run) -> None:
+        training_config = dict(config['trainer'])
+        training_config['config'] = config
+        training_config['run'] = run
+        trainer = mlx.create_module(training_config)
+
+        trainer.train(config['training_epochs'])

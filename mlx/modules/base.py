@@ -57,6 +57,7 @@ def create_module(config: Mapping):
         - the Module's name in torch.nn,
         - the Module's name in mlx.modules,
         - the Module's name as a global import,
+        - the Module's name relative to a package added via `add_module_path`,
         - or the Module's name as an import relative to the `modules` package.
     :return: An instance of the Module specified by the given configuration
         settings.
@@ -92,7 +93,7 @@ def create_module(config: Mapping):
         return getattr(py_module, name[-1])(**config)
     except ModuleNotFoundError:
         pass
-   
+
     # User-defined module in added module path
     added_path = _module_file_path()
     if not os.path.exists(added_path):
