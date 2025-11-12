@@ -68,6 +68,7 @@ class LocalRun:
             self._id = str(uuid.uuid4())
             self.resumed = False
             self.step = 0
+            os.makedirs(LOCAL_RUNS_DIR, exist_ok=True)
         else:
             self._id = resume_id
             self.resumed = True

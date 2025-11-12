@@ -91,7 +91,7 @@ def create_module(config: Mapping):
         name = ['modules'] + name_str.split('.')
         py_module = importlib.import_module('.'.join(name[:-1]))
         return getattr(py_module, name[-1])(**config)
-    except ModuleNotFoundError:
+    except (ModuleNotFoundError, AttributeError):
         pass
 
     # User-defined module in added module path
