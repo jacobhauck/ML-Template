@@ -21,8 +21,8 @@ LOCAL_RUNS_DIR = os.path.join(CHECKPOINT_DIR, 'local')
 
 
 if os.path.exists('wandb_config.yaml'):
-    with open('wandb_config.yaml') as f:
-        wandb_config = yaml.safe_load(f)
+    with open('wandb_config.yaml') as f_:
+        wandb_config = yaml.safe_load(f_)
         assert 'entity' in wandb_config, 'invalid W&B config'
         assert 'project' in wandb_config, 'invalid W&B config'
 else:
@@ -73,7 +73,7 @@ class LocalRun:
             self._id = resume_id
             self.resumed = True
 
-            with open(self._step_file):
+            with open(self._step_file) as f:
                 self.step = int(f.read())
 
     @property
@@ -148,13 +148,3 @@ class WandBExperiment(Experiment):
     @abc.abstractmethod
     def wandb_run(self, config: Mapping, run) -> None:
         raise NotImplemented
-
-
-class TrainingExperiment(WandBExperiment):
-    def wandb_run(self, config: Mapping, run) -> None:
-        training_config = dict(config['trainer'])
-        training_config['config'] = config
-        training_config['run'] = run
-        trainer = mlx.create_module(training_config)
-
-        trainer.train(config['training_epochs'])

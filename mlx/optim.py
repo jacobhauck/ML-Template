@@ -1,5 +1,7 @@
 from typing import Mapping
 
+import torch
+
 """
 Dictionary of custom, named optimizers. If an optimizer is requested in
 create_optimizer that is not present in the torch.optim namespace, then create_optimizer will
