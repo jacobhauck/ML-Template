@@ -213,15 +213,16 @@ class BaseTrainer(ABC):
             print(f'Saving final checkpoint')
         self.save_checkpoint()
     
-    def evaluate(self, data_loaders=('train',)):
+    def evaluate(self, datasets=('train',)):
         self.model.train(False)
         
         losses_by_dataset = {}
         metrics_by_dataset = {}
-        for name in data_loaders:
+        for name in datasets:
             all_losses = {}
             all_metrics = {}
-            for data in self.data_loaders[name]:
+            data_loader = torch.utils.data.DataLoader(self.datasets[name], batch_size=1)
+            for data in data_loader:
                 prediction, losses = self.loss(data)
                 metrics = self.metrics(prediction, data)
                 if len(all_losses) == 0:
