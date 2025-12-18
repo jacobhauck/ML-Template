@@ -66,22 +66,42 @@ class BaseTrainer(ABC):
         if self.run.step is not None and self.run.step > 0:
             self.load_checkpoint(self.run.step)
 
-    def checkpoint_path(self, step=None):
+    def checkpoint_path(self, step=None, must_exist=False):
         if step is None:
             step = self.run.step
 
         assert step is not None and step > 0, \
             'Cannot save until at least one step is made'
-
-        return os.path.join(mlx.CHECKPOINT_DIR, f'{self.run.id}-{step}.pth')
+        
+        check_path = os.path.join(mlx.CHECKPOINT_DIR, f'{self.run.id}-{step}.pth')
+        if must_exist and not os.path.exists(check_path):
+            print('Failed to find requested checkpoint. Falling back to most recent')
+            
+            latest_step = -1
+            latest_file = None
+            for file in os.listdir(mlx.CHECKPOINT_DIR):
+                if file.startswith(f'{self.run.id}'):
+                    file_step = int(os.path.splitext(file)[0].split('-')[-1])
+                    if file_step > latest_step:
+                        latest_step = file_step
+                        latest_file = file
+            
+            if latest_file is None:
+                raise IOError('Could not find any checkpoints!')
+            
+            return os.path.join(mlx.CHECKPOINT_DIR, latest_file)
+        else:
+            return check_path
 
     def save_checkpoint(self):
         state = {
             'step': self.run.step,
             'data_seen': self.data_seen,
-            'model': self.model.cpu().state_dict(),
-            'optim': mlx.optimizer_to(self.optim, 'cpu').state_dict(),
+            'model': self.model.state_dict(),
+            'optim': self.optim.state_dict()
         }
+        
+        state.update(self.dump_additional_state())
 
         if self.lr_scheduler is not None:
             state['lr_scheduler'] = mlx.optimizer_to(self.lr_scheduler, 'cpu').state_dict()
@@ -92,21 +112,17 @@ class BaseTrainer(ABC):
             print(f'Saved checkpoint on step {self.run.step}')
 
     def load_checkpoint(self, step):
-        state = torch.load(self.checkpoint_path(step))
+        state = torch.load(self.checkpoint_path(step, True))
 
         self.data_seen = state['data_seen']
 
-        self.model.cpu().load_state_dict(state['model'])
-        self.model.to(self.device)
-        torch.cuda.empty_cache()
-
-        mlx.optimizer_to(self.optim, 'cpu').load_state_dict(state['optim'])
-        mlx.optimizer_to(self.optim, self.device)
+        self.model.load_state_dict(state['model'])
 
         if self.lr_scheduler is not None:
-            mlx.lr_scheduler_to(self.lr_scheduler, 'cpu').load_state_dict(state['lr_scheduler'])
             mlx.lr_scheduler_to(self.lr_scheduler, self.device)
-
+        
+        self.load_additional_state(state)
+        
         if self.verbosity >= Verbosity.NORMAL.value:
             print(f'Loaded checkpoint {step}')
 
@@ -151,6 +167,7 @@ class BaseTrainer(ABC):
         return epochs * len(self.data_loaders['train'])
 
     def train(self, epochs=1):
+        self.model.train(True)
         marker = time.time()
         if self.run.step is not None and self.run.step > 0:
             epochs_left = (self.num_steps(epochs) - self.run.step) // self.num_steps()
@@ -195,7 +212,33 @@ class BaseTrainer(ABC):
         if self.verbosity >= Verbosity.NORMAL.value:
             print(f'Saving final checkpoint')
         self.save_checkpoint()
-
+    
+    def evaluate(self, data_loaders=('train',)):
+        self.model.train(False)
+        
+        losses_by_dataset = {}
+        metrics_by_dataset = {}
+        for name in data_loaders:
+            all_losses = {}
+            all_metrics = {}
+            for data in self.data_loaders[name]:
+                prediction, losses = self.loss(data)
+                metrics = self.metrics(prediction, data)
+                if len(all_losses) == 0:
+                    all_losses = {key: [] for key in losses}
+                    all_metrics = {key: [] for key in metrics}
+                
+                for key, value in losses.items():
+                    all_losses[key].append(value.item())
+                
+                for key, value in metrics.items():
+                    all_metrics[key].append(value.item())
+            
+            losses_by_dataset[name] = {key: torch.tensor(value) for key, value in all_losses.items()}
+            metrics_by_dataset[name] = {key: torch.tensor(value) for key, value in all_metrics.items()}
+        
+        return losses_by_dataset, metrics_by_dataset
+    
     # noinspection PyMethodMayBeStatic
     def get_batch_size(self, data):
         return len(data[0])
@@ -207,7 +250,15 @@ class BaseTrainer(ABC):
     # noinspection PyMethodMayBeStatic
     def lr_scheduler_log(self):
         return {}
-
+    
+    # noinspection PyMethodMayBeStatic
+    def dump_additional_state(self):
+        return {}
+    
+    # noinspection PyMethodMayBeStatic
+    def load_additional_state(self, state):
+        pass
+    
     @abstractmethod
     def loss(self, data):
         """

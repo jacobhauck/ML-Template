@@ -15,6 +15,8 @@ from typing import Mapping
 import wandb
 import yaml
 
+import mlx
+
 
 CHECKPOINT_DIR = '.checkpoints'
 LOCAL_RUNS_DIR = os.path.join(CHECKPOINT_DIR, 'local')
@@ -63,26 +65,32 @@ class _DummyRunAttribute:
 class LocalRun:
     _attr = _DummyRunAttribute()
 
-    def __init__(self, resume_id=None):
+    def __init__(self, config, resume_id=None):
         if resume_id is None:
             self._id = str(uuid.uuid4())
             self.resumed = False
             self.step = 0
             os.makedirs(LOCAL_RUNS_DIR, exist_ok=True)
+            self.config = config
+            with open(self.step_file + '.config.yaml', 'w') as f:
+                yaml.safe_dump(config, f)
         else:
             self._id = resume_id
             self.resumed = True
 
-            with open(self._step_file) as f:
+            with open(self.step_file) as f:
                 self.step = int(f.read())
+            
+            with open(self.step_file + '.config.yaml') as f:
+                self.config = yaml.safe_load(f)
 
     @property
-    def _step_file(self):
+    def step_file(self):
         return os.path.join(LOCAL_RUNS_DIR, self._id)
 
     def log(self, *_, **__):
         self.step += 1
-        with open(self._step_file, 'w') as step_file:
+        with open(self.step_file, 'w') as step_file:
             step_file.write(str(self.step))
 
     def __getattr__(self, item):
@@ -104,7 +112,8 @@ class WandBExperiment(Experiment):
             'Must add properly formed wandb_config.yaml file to run W&B experiments'
 
         if 'use_wandb' in config and not config['use_wandb']:
-            run = LocalRun(resume_id=config.get('resume_id'))
+            run = LocalRun(config, resume_id=config.get('resume_id'))
+            config = run.config
         elif 'resume_id' in config:
             run_id = config['resume_id']
             run = wandb.init(
