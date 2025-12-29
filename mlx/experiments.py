@@ -87,11 +87,22 @@ class LocalRun:
     @property
     def step_file(self):
         return os.path.join(LOCAL_RUNS_DIR, self._id)
-
-    def log(self, *_, **__):
+    
+    @property
+    def log_file(self):
+        return os.path.join(LOCAL_RUNS_DIR, self._id + '.log')
+    
+    def log(self, data, *_, **__):
         self.step += 1
         with open(self.step_file, 'w') as step_file:
             step_file.write(str(self.step))
+        
+        if not os.path.exists(self.log_file):
+            with open(self.log_file, 'w') as log_file:
+                log_file.write('Logging\n\n')
+        
+        with open(self.log_file, 'a') as log_file:
+            log_file.write(repr(data) + '\n\n')
 
     def __getattr__(self, item):
         """This is a cheap way to provide some compatibility with W&B interface"""
