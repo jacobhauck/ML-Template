@@ -105,7 +105,6 @@ def run_experiment(
 
     # Run experiment/experiment group
     if group is None:
-        print(base_config)
         experiment.run(base_config, name=name, group=None)
     else:
         # Load group configurations
