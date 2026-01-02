@@ -61,6 +61,8 @@ The `mlx.run` command searches for configuration files in the following
 locations:
 
 - `config.(yaml|json)`, which contains project global configuration
+- `experimentst/<config_name>.(yaml|json)`, which contains optional global 
+   configuration
 - `experiments/<experiment_name>/config.(yaml|json)`, which contains experiment
    default configuration
 - `experiments/<experiment_name>/<config_name>.config.(yaml|json)`, which
@@ -119,6 +121,31 @@ python -m mlx.run demo other
 ```
 Any number of additional override files may be specified, and they will override
 the global and experiment default configuration in the order they are given.
+
+Additionally, if you need to reuse configuration across experiments, you can store
+it in an extra global configuration file directly under the `experiments` 
+directory. To reference this file as opposed to additional configuration defined
+within a particular experiment, add the `global:` prefix. For example, we can
+include the configuration in `demo/other.yaml` in the demo experiment by
+running
+```commandline
+python -m mlx.run demo global:other
+```
+Note that `global:` can be omitted if the name of the global configuration file
+does not conflict with any per-experiment configuration files. If a conflict
+does exist, then the per-experiment configuration will be given priority. 
+Therefore, the following command uses the configuration `experiments/demo/other.yaml`,
+not `experiments/other.yaml`:
+```commandline
+python -m mlx.run demo other
+```
+However, the following command uses the configuration `experiments/other2.yaml`,
+as no file named `experiments/demo/other2.yaml` exists (unless for some reason 
+you added one):
+```commandline
+python -m mlx.run demo other2
+```
+
 
 ### Configuration groups
 

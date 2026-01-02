@@ -90,11 +90,22 @@ def run_experiment(
     # Get base config
     base_config = mlx.config.load_base_config()
     for config_file in configs:
-        config = mlx.config.load_config(os.path.join(experiment_dir, config_file))
+        if config_file.startswith('global:'):
+            global_file = os.path.join('experiments', config_file[len('global:'):])
+            config = mlx.config.load_config(global_file)
+        else:
+            try:
+                config = mlx.config.load_config(
+                    os.path.join(experiment_dir, config_file),
+                    raise_exc=True
+                )
+            except mlx.config.ConfigNotFoundError:
+                config = mlx.config.load_config(os.path.join('experiments', config_file))
         mlx.config.config_update_recursive(base_config, config, default_option='add')
 
     # Run experiment/experiment group
     if group is None:
+        print(base_config)
         experiment.run(base_config, name=name, group=None)
     else:
         # Load group configurations

@@ -102,7 +102,7 @@ class LocalRun:
                 log_file.write('Logging\n\n')
         
         with open(self.log_file, 'a') as log_file:
-            log_file.write(repr(data) + '\n\n')
+            log_file.write(repr(data) + '\n')
 
     def __getattr__(self, item):
         """This is a cheap way to provide some compatibility with W&B interface"""
