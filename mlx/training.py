@@ -32,12 +32,20 @@ class DelayedKeyboardInterrupt:
 
 
 class BaseTrainer(ABC):
-    def __init__(self, config, run, save_interval=None, verbosity=1):
+    def __init__(
+            self,
+            config,
+            run,
+            save_interval=None,
+            log_interval=None,
+            verbosity=1
+    ):
         self.run = run
         self.config = config
         self.data_seen = 0
         self.device = config.get('device', 'cpu')
         self.save_interval = save_interval
+        self.log_interval = log_interval
         self.verbosity = verbosity
 
         if self.verbosity >= Verbosity.NORMAL.value:
@@ -138,18 +146,20 @@ class BaseTrainer(ABC):
 
         return selection
 
-    def train_one_step(self, epoch, batch, data):
+    def train_one_step(self, epoch, batch, data, do_log=True):
         self.optim.zero_grad()
         prediction, losses = self.loss(data)
         losses['objective'].backward()
         self.optim.step()
 
-        log = {'epoch': epoch, 'batch': batch, 'data_seen': self.data_seen}
-        log.update({name: loss.item() for name, loss in losses.items()})
         metrics = self.metrics(prediction, data)
-        log.update(metrics)
-        log.update(self.lr_scheduler_log())
-        self.run.log(log)
+
+        if do_log:
+            log = {'epoch': epoch, 'batch': batch, 'data_seen': self.data_seen}
+            log.update({name: loss.item() for name, loss in losses.items()})
+            log.update(metrics)
+            log.update(self.lr_scheduler_log())
+            self.run.log(log)
 
         self.data_seen += self.get_batch_size(data)
 
@@ -170,7 +180,10 @@ class BaseTrainer(ABC):
 
     def train(self, epochs=1):
         self.model.train(True)
-        marker = time.time()
+        save_marker = time.time()
+        log_marker = time.time()
+        log_next = False
+
         if self.run.step is not None and self.run.step > 0:
             epochs_left = (self.num_steps(epochs) - self.run.step) // self.num_steps()
             if self.verbosity >= Verbosity.NORMAL.value:
@@ -194,12 +207,18 @@ class BaseTrainer(ABC):
                 for batch, data in enumerate(self.data_loaders['train']):
                     # Delay keyboard interrupts until the end of a training step
                     with DelayedKeyboardInterrupt():
-                        self.train_one_step(epoch, batch, data)
+                        self.train_one_step(epoch, batch, data, do_log=log_next)
+                        log_next = False
 
                         if self.save_interval is not None and \
-                                time.time() - marker > self.save_interval:
-                            marker = time.time()
+                                time.time() - save_marker > self.save_interval:
                             self.save_checkpoint()
+                            save_marker = time.time()
+
+                        if self.log_interval is not None and \
+                                time.time() - log_marker > self.log_interval:
+                            log_next = True
+                            log_marker = time.time()
 
                         if batch == len(self.data_loaders['train']) - 1 and \
                                 self.lr_scheduler is not None:
