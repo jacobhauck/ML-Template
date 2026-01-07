@@ -18,7 +18,7 @@ import yaml
 import mlx
 
 
-CHECKPOINT_DIR = '.checkpoints'
+CHECKPOINT_DIR = 'checkpoints'
 LOCAL_RUNS_DIR = os.path.join(CHECKPOINT_DIR, 'local')
 
 

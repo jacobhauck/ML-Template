@@ -105,8 +105,10 @@ class BaseTrainer(ABC):
 
         if self.lr_scheduler is not None:
             state['lr_scheduler'] = mlx.optimizer_to(self.lr_scheduler, 'cpu').state_dict()
-
-        torch.save(state, self.checkpoint_path())
+        
+        path = self.checkpoint_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        torch.save(state, path)
 
         if self.verbosity >= Verbosity.NORMAL.value:
             print(f'Saved checkpoint on step {self.run.step}')
