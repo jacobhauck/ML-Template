@@ -92,8 +92,13 @@ class LocalRun:
     def log_file(self):
         return os.path.join(LOCAL_RUNS_DIR, self._id + '.log')
     
-    def log(self, data, *_, **__):
-        self.step += 1
+    def log(self, data, step=None, *_, **__):
+        if step is not None:
+            assert step > self.step, 'Steps must increase!'
+            self.step = step
+        else:
+            self.step += 1
+        
         with open(self.step_file, 'w') as step_file:
             step_file.write(str(self.step))
         

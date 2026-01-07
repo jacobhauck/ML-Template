@@ -72,7 +72,7 @@ class BaseTrainer(ABC):
             print(f'{len(self.datasets)} datasets loaded')
 
         if self.run.step is not None and self.run.step > 0:
-            self.load_checkpoint(self.run.step)
+            self.load_checkpoint(self.run.step - 1)
 
     def checkpoint_path(self, step=None, must_exist=False):
         if step is None:
@@ -146,7 +146,7 @@ class BaseTrainer(ABC):
 
         return selection
 
-    def train_one_step(self, epoch, batch, data, do_log=True):
+    def train_one_step(self, epoch, batch, data, do_log=True, log_step=None):
         self.optim.zero_grad()
         prediction, losses = self.loss(data)
         losses['objective'].backward()
@@ -159,7 +159,7 @@ class BaseTrainer(ABC):
             log.update({name: loss.item() for name, loss in losses.items()})
             log.update(metrics)
             log.update(self.lr_scheduler_log())
-            self.run.log(log)
+            self.run.log(log, step=log_step)
 
         self.data_seen += self.get_batch_size(data)
 
@@ -183,6 +183,7 @@ class BaseTrainer(ABC):
         save_marker = time.time()
         log_marker = time.time()
         log_next = False
+        log_step = 0 if self.run.step is None else self.run.step
 
         if self.run.step is not None and self.run.step > 0:
             epochs_left = (self.num_steps(epochs) - self.run.step) // self.num_steps()
@@ -195,7 +196,7 @@ class BaseTrainer(ABC):
             if self.verbosity >= Verbosity.NORMAL.value:
                 print(f'Starting training from step 0 for {epochs} epochs')
                 print(f'Training steps: {self.num_steps(epochs_left)}')
-
+        
         try:
             for epoch in range(epochs_left):
                 if self.verbosity >= Verbosity.VERBOSE.value:
@@ -207,7 +208,8 @@ class BaseTrainer(ABC):
                 for batch, data in enumerate(self.data_loaders['train']):
                     # Delay keyboard interrupts until the end of a training step
                     with DelayedKeyboardInterrupt():
-                        self.train_one_step(epoch, batch, data, do_log=log_next)
+                        self.train_one_step(epoch, batch, data, do_log=log_next, log_step=log_step)
+                        log_step += 1
                         log_next = False
 
                         if self.save_interval is not None and \
