@@ -37,15 +37,25 @@ class BufferDict(torch.nn.Module):
             yield getattr(self, name)
 
 
+def _make_sequence(data, size):
+    try:
+        _ = data[0]
+        return data
+    except (TypeError, KeyError):  # KeyError in case data is a config dict
+        return [data] * size
+
+
 class MLP(torch.nn.Module):
     def __init__(
             self,
             d_in: int,
             hidden_layers: Sequence[int],
             d_out: int,
-            activation: Mapping,
-            dropout: float | None = None,
-            bias: bool = True
+            activation: Sequence[Mapping] | Mapping,
+            bias: Sequence[bool] | bool = True,
+            norm: Sequence[Mapping] | Mapping | None = None,
+            dropout: Sequence[float] | float | None = None,
+            order: str = 'nad'
     ):
         """
         A multi-layer perceptron.
@@ -53,10 +63,20 @@ class MLP(torch.nn.Module):
         :param hidden_layers: sequence of integers giving hidden dimensions;
             number of layers = len(hidden_layers) + 1
         :param d_out: output dimension
-        :param activation: Activation function config
-        :param dropout: Dropout rate for dropout applied after each layer;
-            None for no dropout. Default = None.
-        :param bias: Whether to use bias in the linear layers. Default=True.
+        :param bias: Whether to use bias in the linear layers. Either a list of
+            per-layer values or one to apply to all layers. Default = True.
+        :param activation: Activation function config or per-layer list of
+            configs to apply in hidden layers (list of size len(hidden_layers)).
+        :param norm: Normalization config to apply for each hidden layer; either
+            a layer-by-layer list (of size len(hidden_layers)), or one value to
+            apply to all layers, or None for no normalization. Default = None.
+        :param dropout: Dropout rate for dropout applied after each hidden layer;
+            either a layer-by-layer list (of size len(hidden_layers)), or one
+            value to apply to all layers. None for no dropout. Default = None.
+        :param order: Order in which to apply activation, dropout and
+            normalization (if the latter two are specified) as a string of the
+            characters 'a', 'd', 'n'. Default = 'nad', that is,
+            normalization, activation, dropout
         """
         super(MLP, self).__init__()
 
@@ -64,20 +84,30 @@ class MLP(torch.nn.Module):
         self.d_in = d_in
         self.d_out = d_out
         self.hidden_layers = tuple(hidden_layers)
-        self.activation = activation
+        self.order = order
 
         # Construct layers
         layers = []
+        self.activation = _make_sequence(activation, len(self.hidden_layers))
+        self.bias = _make_sequence(bias, len(self.hidden_layers) + 1)
+        self.norm = _make_sequence(norm, len(self.hidden_layers))
+        self.dropout = _make_sequence(dropout, len(self.hidden_layers))
 
         architecture = (d_in,) + self.hidden_layers + (d_out,)
-        for d_in, d_out in zip(architecture[:-1], architecture[1:]):
-            layers.append(torch.nn.Linear(d_in, d_out, bias=bias))
-            layers.append(mlx.create_module(activation))
-            if dropout is not None:
-                layers.append(torch.nn.Dropout(dropout))
-        
-        # Remove the last activation function
-        layers.pop(-1 if dropout is None else -2)
+        for i, (d_in, d_out) in enumerate(zip(architecture[:-1], architecture[1:])):
+            layers.append(torch.nn.Linear(d_in, d_out, bias=self.bias[i]))
+            if i < len(self.hidden_layers):
+                post_layer_modules = {'a': mlx.create_module(self.activation[i])}
+
+                if self.norm[i] is not None:
+                    post_layer_modules['n'] = mlx.create_module(self.norm[i])
+
+                if self.dropout[i] is not None:
+                    post_layer_modules['d'] = torch.nn.Dropout(self.dropout[i])
+
+                for module in order:
+                    if module in post_layer_modules:
+                        layers.append(post_layer_modules[module])
 
         # Save layers as Sequential module
         self.layers = torch.nn.Sequential(*layers)

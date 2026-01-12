@@ -246,8 +246,10 @@ class BaseTrainer(ABC):
             all_metrics = {}
             data_loader = torch.utils.data.DataLoader(self.datasets[name], batch_size=1)
             for data in data_loader:
-                prediction, losses = self.loss(data)
-                metrics = self.metrics(prediction, data)
+                with torch.no_grad():
+                    prediction, losses = self.loss(data)
+                    metrics = self.metrics(prediction, data)
+                
                 if len(all_losses) == 0:
                     all_losses = {key: [] for key in losses}
                     all_metrics = {key: [] for key in metrics}
