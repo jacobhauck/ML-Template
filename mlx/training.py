@@ -72,7 +72,7 @@ class BaseTrainer(ABC):
             print(f'{len(self.datasets)} datasets loaded')
 
         if self.run.step is not None and self.run.step > 0:
-            self.load_checkpoint(self.run.step - 1)
+            self.load_checkpoint(self.run.step)
 
     def checkpoint_path(self, step=None, must_exist=False):
         if step is None:
@@ -208,6 +208,11 @@ class BaseTrainer(ABC):
                 for batch, data in enumerate(self.data_loaders['train']):
                     # Delay keyboard interrupts until the end of a training step
                     with DelayedKeyboardInterrupt():
+                        # Force log on last step to ensure last step is set correctly
+                        if batch == len(self.data_loaders['train']) - 1 and \
+                                epoch == epochs_left - 1:
+                            log_next = True
+
                         self.train_one_step(epoch, batch, data, do_log=log_next, log_step=log_step)
                         log_step += 1
                         log_next = False
@@ -225,6 +230,8 @@ class BaseTrainer(ABC):
                         if batch == len(self.data_loaders['train']) - 1 and \
                                 self.lr_scheduler is not None:
                             self.lr_scheduler.step()
+
+
 
         except KeyboardInterrupt as e:
             selection = self.get_interruption_selection()
