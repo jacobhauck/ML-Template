@@ -238,8 +238,6 @@ class BaseTrainer(ABC):
 
             if selection == 'killed':
                 raise e
-            
-            self.run.log({'epoch': epoch, 'batch': batch, 'data_seen': self.data_seen})
 
         if self.verbosity >= Verbosity.NORMAL.value:
             print(f'Saving final checkpoint')
