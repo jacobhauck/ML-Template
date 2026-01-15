@@ -125,7 +125,7 @@ class RelativeL2Loss(torch.nn.Module):
         abs_loss = ((x - target)**2).view(x.shape[0], -1).mean(dim=1)
         size = (target**2).view(target.shape[0], -1).mean(dim=1)
         
-        if squared:
+        if self.squared:
             return (abs_loss / size).mean()
         else:
             return ((abs_loss / size) ** .5).mean()
