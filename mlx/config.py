@@ -12,9 +12,13 @@ Functions
 import copy
 import json
 import os
-from typing import MutableMapping
+from typing import Mapping, MutableMapping
 
 import yaml
+
+
+class ConfigNotFoundError(BaseException):
+    pass
 
 
 def config_update_recursive(
@@ -75,10 +79,6 @@ def config_update_recursive(
                 base_config[key] = copy.deepcopy(value)
 
 
-class ConfigNotFoundError(BaseException):
-    pass
-
-
 def load_config(path, raise_exc=False) -> dict:
     """
     Load a config file into a dict.
@@ -134,3 +134,38 @@ def load_base_config() -> dict:
     :return: dict object containing the base configuration options.
     """
     return load_config('config')
+
+
+def diff(config1: Mapping, config2: Mapping) -> tuple[dict, dict, dict]:
+    unique1 = {}
+    unique2 = {}
+    shared = {}
+    for key, value in config1.items():
+        if key in config2:
+            value2 = config2[key]
+            if isinstance(value, dict):
+                if not isinstance(value2, dict):
+                    unique1[key] = value
+                    unique2[key] = value2
+                else:
+                    unique1[key], shared[key], unique2[key] = diff(value, value2)
+                    for d in (unique1, shared, unique2):
+                        if len(d[key]) == 0:
+                            d.pop(key)
+            elif not isinstance(value2, dict):
+                if value == value2:
+                    shared[key] = value
+                else:
+                    unique1[key] = value
+                    unique2[key] = value2
+            else:
+                unique1[key] = value
+                unique2[key] = value2
+        else:
+            unique1[key] = value
+    
+    for key, value in config2.items():
+        if key not in config1:
+            unique2[key] = value
+    
+    return unique1, shared, unique2
