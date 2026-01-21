@@ -144,7 +144,7 @@ class WandBExperiment(Experiment):
             runs = api.runs(
                 wandb_path(),
                 filters=dict(
-                    displayName={'$regex': rf'{name}.*'}
+                    displayName={'$regex': rf'{name}-.*'}
                 )
             )
             run_number = 1 + max((int(run.name.split('-')[1]) for run in runs), default=0)
