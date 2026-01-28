@@ -109,5 +109,5 @@ def create_module(config: Mapping):
             return getattr(py_module, name[-1])(**config)
         except ModuleNotFoundError:
             pass
-    
+
     raise ValueError('Invalid Module')

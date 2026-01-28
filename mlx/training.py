@@ -157,7 +157,7 @@ class BaseTrainer(ABC):
         if do_log:
             log = {'epoch': epoch, 'batch': batch, 'data_seen': self.data_seen}
             log.update({name: loss.item() for name, loss in losses.items()})
-            log.update(metrics)
+            log.update({name: float(value) for name, value in metrics.items()})
             log.update(self.lr_scheduler_log())
             self.run.log(log, step=log_step)
 
@@ -265,7 +265,7 @@ class BaseTrainer(ABC):
                     all_losses[key].append(value.item())
                 
                 for key, value in metrics.items():
-                    all_metrics[key].append(value.item())
+                    all_metrics[key].append(float(value))
             
             losses_by_dataset[name] = {key: torch.tensor(value) for key, value in all_losses.items()}
             metrics_by_dataset[name] = {key: torch.tensor(value) for key, value in all_metrics.items()}
