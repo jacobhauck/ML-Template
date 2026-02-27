@@ -122,8 +122,18 @@ class RelativeL2Loss(torch.nn.Module):
         self.squared = squared
     
     def forward(self, x, target):
-        abs_loss = ((x - target)**2).view(x.shape[0], -1).mean(dim=1)
-        size = (target**2).view(target.shape[0], -1).mean(dim=1)
+        """
+        Calculates relative L^2 loss
+        :param x: (B, *shape, d_out)
+        :param target: (B, *shape, d_out)
+        :return: Mean relative L^2 loss across the given batch
+        """
+        # We can take the mean over both spatial shape and d_out because the
+        # extraneous factor of 1/d_out (or sqrt(1/d_out)) cancels when we divide
+        # by size, which has the same factor
+        abs_loss = ((x - target)**2).reshape(x.shape[0], -1).mean(dim=1)
+        size = (target**2).reshape(target.shape[0], -1).mean(dim=1)
+        # (B,) each
         
         if self.squared:
             return (abs_loss / size).mean()
