@@ -139,3 +139,6 @@ class RelativeL2Loss(torch.nn.Module):
             return (abs_loss / size).mean()
         else:
             return ((abs_loss / size) ** .5).mean()
+
+    def __repr__(self):
+        return f'RelativeL2Loss(squared={self.squared})'
