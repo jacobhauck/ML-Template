@@ -2,17 +2,15 @@
 requires = [
     "setuptools",
     "wheel",
-    "toml",
-    "versioningit"
+    "toml"
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlx"
-authors = [
-    {name = "Jacob Hauck", email = "jacobh15@yahoo.com"}
-]
+authors = [{name = "Jacob Hauck", email = "jacobh15@yahoo.com"}]
 description = "Basic tools for creating machine learning experiments"
+version = "1.0.0"
 readme = "README.md"
 license = "MIT"
 classifiers = [
@@ -23,23 +21,9 @@ dependencies = [
     "PyYAML",
     'importlib-metadata; python_version>="3.11"'
 ]
-dynamic = ["version"]
 
-[tool.versioningit.vcs]
-method = "git"
-match = ["v*"]
-default-tag = "0.0.1"
-
-[tool.versioningit.next-version]
-method = "minor"
-
-[tool.versioningit.format]
-distance = "{next_version}"
-dirty = "{next_version}"
-distance-dirty = "{next_version}"
-
-[tool.versioningit.write]
-file = "mlx/_version.py"
+[project.scripts]
+mlx = "mlx.run:_run_cli"
 
 [tool.setuptools.packages.find]
 exclude = ["experiments*"]

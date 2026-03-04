@@ -1,7 +1,6 @@
 # ML Template
 /datasets/
 /weights/
-mlx/_version.py
 wandb/
 .checkpoints/
 

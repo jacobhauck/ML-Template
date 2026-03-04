@@ -33,6 +33,38 @@ from typing import Sequence
 import mlx
 
 
+def _run_cli():
+    parser = argparse.ArgumentParser(
+        prog='mlx.run',
+        description='Run an experiment or a group of experiments.'
+    )
+
+    parser.add_argument(
+        'name',
+        help='The experiment name.'
+    )
+
+    parser.add_argument(
+        'configs', nargs='*',
+        help='Optional extra config files.'
+    )
+
+    parser.add_argument(
+        '--group', '-g',
+        help='Optional directory of config file, with each '
+             'of which the experiment will be run.',
+        default=None
+    )
+
+    args = parser.parse_args()
+
+    # Add cwd to path so that imports work correctly
+    import sys
+    sys.path.append(os.getcwd())
+
+    run_experiment(args.name, args.configs, args.group)
+
+
 def run_experiment(
         name: str,
         configs: Sequence[str | os.PathLike] | None = None,
@@ -133,27 +165,4 @@ def run_experiment(
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        prog='mlx.run',
-        description='Run an experiment or a group of experiments.'
-    )
-
-    parser.add_argument(
-        'name',
-        help='The experiment name.'
-    )
-
-    parser.add_argument(
-        'configs', nargs='*',
-        help='Optional extra config files.'
-    )
-
-    parser.add_argument(
-        '--group', '-g',
-        help='Optional directory of config file, with each '
-             'of which the experiment will be run.',
-        default=None
-    )
-
-    args = parser.parse_args()
-    run_experiment(args.name, args.configs, args.group)
+    _run_cli()
