@@ -31,6 +31,34 @@ class DelayedKeyboardInterrupt:
             self.old_handler(*self.signal_received)
 
 
+def remove_old_checkpoints():
+    checkpoints = {}
+    for file in os.listdir(mlx.CHECKPOINT_DIR):
+        if os.path.isfile(os.path.join(mlx.CHECKPOINT_DIR, file)) and file.endswith('.pth'):
+            run_id, step = os.path.splitext(file)[0].split('-')
+            if run_id not in checkpoints:
+                checkpoints[run_id] = []
+            checkpoints[run_id].append(int(step))
+    
+    removed_runs = []
+    size_removed = 0
+    for run_id, checkpoint_steps in checkpoints.items():
+        if len(checkpoint_steps) > 1:
+            removed_runs.append((run_id, len(checkpoint_steps) - 1))
+            last_step = max(checkpoint_steps)
+            for step in checkpoint_steps:
+                if step == last_step:
+                    continue
+                checkpoint_file = os.path.join(mlx.CHECKPOINT_DIR, f'{run_id}-{step}.pth')
+                size_removed += os.path.getsize(checkpoint_file)
+                os.remove(checkpoint_file)
+    
+    total_removed = sum(s for r, s in removed_runs)
+    print(f'Removed {total_removed} checkpoints ({size_removed} bytes)')
+    for run_id, num_removed in removed_runs:
+        print(f'Removed {num_removed} from run {run_id}')
+
+
 class BaseTrainer(ABC):
     def __init__(
             self,
