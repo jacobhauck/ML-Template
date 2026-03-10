@@ -60,7 +60,7 @@ def _run_cli():
 
     # Add cwd to path so that imports work correctly
     import sys
-    sys.path.append(os.getcwd())
+    sys.path.insert(0, os.getcwd())
 
     run_experiment(args.name, args.configs, args.group)
 
