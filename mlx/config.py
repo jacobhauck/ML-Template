@@ -74,7 +74,7 @@ def config_update_recursive(
             if isinstance(base_config[key], dict):
                 if not isinstance(value, dict):
                     raise ValueError('Override config does not properly override base config.')
-                config_update_recursive(base_config[key], value)
+                config_update_recursive(base_config[key], value, default_option=default_option)
             else:
                 base_config[key] = copy.deepcopy(value)
 
