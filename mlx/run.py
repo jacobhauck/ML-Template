@@ -55,6 +55,15 @@ def _run_cli():
              'of which the experiment will be run.',
         default=None
     )
+    
+    parser.add_argument(
+        '--in_group',
+        help='Optional group for the experiment (unlike the --group '
+             'argument, this just applies the given name but does not '
+             'sequentially run a set of experiments in a group. To be '
+             'used for running experiments in a group in parallel)',
+        default=None
+    )
 
     args = parser.parse_args()
 
@@ -62,13 +71,14 @@ def _run_cli():
     import sys
     sys.path.insert(0, os.getcwd())
 
-    run_experiment(args.name, args.configs, args.group)
+    run_experiment(args.name, args.configs, args.group, args.in_group)
 
 
 def run_experiment(
         name: str,
         configs: Sequence[str | os.PathLike] | None = None,
-        group: str | os.PathLike | None = None
+        group: str | os.PathLike | None = None,
+        in_group: str | os.PathLike | None = None
 ):
     """
     Runs an experiment or a group of experiments.
@@ -82,6 +92,7 @@ def run_experiment(
         consist of runs of the same experiment, one for each configuration file
         in the directory, with the configuration options for that run being
         overridden by the corresponding configuration file.
+    :param in_group: Optional name of group to apply to this experiment.
     """
     # Handle no configs specified and convert to list so that we can prepend the
     # default config
@@ -137,7 +148,7 @@ def run_experiment(
 
     # Run experiment/experiment group
     if group is None:
-        experiment.run(base_config, name=name, group=None)
+        experiment.run(base_config, name=name, group=in_group)
     else:
         # Load group configurations
         group_configs = []
