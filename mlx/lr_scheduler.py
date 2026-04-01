@@ -37,16 +37,17 @@ def create_lr_scheduler(optimizer, config: Mapping):
 
 # noinspection PyProtectedMember
 def lr_scheduler_to(lr_scheduler, device):
-    for param in lr_scheduler.state.values():
-        if isinstance(param, torch.Tensor):
-            param.data = param.data.to(device)
-            if param._grad is not None:
-                param._grad.data = param._grad.data.to(device)
-        elif isinstance(param, dict):
-            for sub_param in param.values():
-                if isinstance(sub_param, torch.Tensor):
-                    sub_param.data = sub_param.data.to(device)
-                    if sub_param._grad is not None:
-                        sub_param._grad.data = sub_param._grad.data.to(device)
+    if hasattr(lr_scheduler, 'state'):
+        for param in lr_scheduler.state.values():
+            if isinstance(param, torch.Tensor):
+                param.data = param.data.to(device)
+                if param._grad is not None:
+                    param._grad.data = param._grad.data.to(device)
+            elif isinstance(param, dict):
+                for sub_param in param.values():
+                    if isinstance(sub_param, torch.Tensor):
+                        sub_param.data = sub_param.data.to(device)
+                        if sub_param._grad is not None:
+                            sub_param._grad.data = sub_param._grad.data.to(device)
 
     return lr_scheduler
