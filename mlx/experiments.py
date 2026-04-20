@@ -37,6 +37,13 @@ def wandb_path():
     return wandb_config['entity'] + '/' + wandb_config['project']
 
 
+def load_run(run_id):
+    api = wandb.Api()
+    run = api.run(wandb_path() + '/' + run_id)
+    run.step = run.lastHistoryStep
+    return run
+
+
 class Experiment(abc.ABC):
     """
     Represents a type of experiment.
