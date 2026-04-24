@@ -64,6 +64,14 @@ class Experiment(abc.ABC):
         self.started_group = False
 
 
+def experiment(run_fn):
+    class _Experiment(Experiment):
+        def run(self, config: Mapping, name: str, group: str | None = None) -> None:
+            run_fn(config, name, group)
+    
+    return _Experiment
+
+
 class _DummyRunAttribute:
     def __call__(self, *args, **kwargs):
         pass
@@ -180,3 +188,11 @@ class WandBExperiment(Experiment):
     @abc.abstractmethod
     def wandb_run(self, config: Mapping, run) -> None:
         raise NotImplemented
+
+
+def wandb_experiment(run_fn):
+    class _WandBExperiment(WandBExperiment):
+        def wandb_run(self, config: Mapping, run) -> None:
+            run_fn(config, run)
+    
+    return _WandBExperiment
