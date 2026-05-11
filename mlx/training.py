@@ -64,6 +64,7 @@ class BaseTrainer(ABC):
             self,
             config,
             run,
+            no_data=False,
             save_interval=None,
             log_interval=None,
             verbosity=1
@@ -94,8 +95,13 @@ class BaseTrainer(ABC):
                 print('Learning rate scheduler initialized')
         else:
             self.lr_scheduler = None
-
-        self.datasets, self.data_loaders = self.load_datasets(config)
+        
+        if no_data:
+            print('Skipping dataset loading')
+            self.datasets, self.data_loaders = {}, {}
+        else:
+            self.datasets, self.data_loaders = self.load_datasets(config)
+            
         if self.verbosity >= Verbosity.VERBOSE.value:
             print(f'{len(self.datasets)} datasets loaded')
 
