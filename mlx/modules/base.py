@@ -5,6 +5,9 @@ import mlx.modules
 from typing import Mapping
 
 
+debug_search_paths = False
+
+
 def _module_file_path():
     folder = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(folder, 'path.txt')
@@ -70,13 +73,15 @@ def create_module(config: Mapping):
         import torch
         return getattr(torch.nn, name_str)(**config)
     except AttributeError:
-        pass
+        if debug_search_paths:
+            print(f'Module {name_str} not found as torch module')
 
     try:
         # mlx built-in module
         return getattr(mlx.modules, name_str)(**config)
     except AttributeError:
-        pass
+        if debug_search_paths:
+            print(f'Module {name_str} not found as mlx module')
 
     # Global import
     try:
@@ -84,7 +89,8 @@ def create_module(config: Mapping):
         py_module = importlib.import_module('.'.join(name[:-1]))
         return getattr(py_module, name[-1])(**config)
     except (ModuleNotFoundError, ValueError):
-        pass
+        if debug_search_paths:
+            print(f'Module {name_str} not found as global import')
 
     # User-defined module in modules
     try:
@@ -92,7 +98,8 @@ def create_module(config: Mapping):
         py_module = importlib.import_module('.'.join(name[:-1]))
         return getattr(py_module, name[-1])(**config)
     except (ModuleNotFoundError, AttributeError):
-        pass
+        if debug_search_paths:
+            print(f'Module {name_str} not found in local `modules` folder')
 
     # User-defined module in added module path
     added_path = _module_file_path()
@@ -108,6 +115,7 @@ def create_module(config: Mapping):
             py_module = importlib.import_module('.'.join(name[:-1]))
             return getattr(py_module, name[-1])(**config)
         except ModuleNotFoundError:
-            pass
+            if debug_search_paths:
+                print(f'Module {name_str} not found in custom path: {path}')
 
     raise ValueError('Invalid Module')
