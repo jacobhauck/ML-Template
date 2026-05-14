@@ -35,7 +35,7 @@ def remove_module_path(path):
     else:
         existing_paths = ()
     
-    if path in existing_patshs:
+    if path in existing_paths:
         with open(_module_file_path(), 'w') as f:
             for other_path in existing_paths:
                 if other_path != path:
