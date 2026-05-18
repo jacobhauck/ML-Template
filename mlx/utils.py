@@ -11,7 +11,7 @@ def subset_indices(config, dataset):
         return list(range(sample_cfg['start_index'], stop_index + 1, step))
     elif sample_cfg.get('random', False):
         size = sample_cfg.get('size', len(dataset))
-        return random.sample(range(size), k=size)
+        return random.sample(range(len(dataset)), k=size)
     else:
         size = sample_cfg.get('size', len(dataset))
         return list(range(size))
