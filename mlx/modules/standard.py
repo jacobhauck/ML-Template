@@ -266,10 +266,9 @@ class StackedMLP(torch.nn.Module):
     def forward(self, x):
         """
         :param x: (..., d_in)
-        :return: (..., d_out, num_units)
+        :return: (..., num_units, d_out)
         """
-        y = self.layers(x)  # (..., d_out * num_units)
-        return y.reshape(*x.shape[:-1], self.d_out, self.num_units)
+        return self.layers(x)  # (..., num_units, d_out)
 
 
 class RelativeL2Loss(torch.nn.Module):
