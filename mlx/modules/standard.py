@@ -233,6 +233,8 @@ class StackedMLP(torch.nn.Module):
             if i == 0:
                 # First layer is regular linear; this duplicates the input for each group
                 layers.append(torch.nn.Linear(d_in, d_out * num_units, bias=self.bias[i]))
+                # Manually unflatten the last dimension for use with StackedLinear
+                layers.append(torch.nn.Unflatten(-1, (num_units, d_out)))
             else:
                 layers.append(StackedLinear(d_in, d_out, num_units, bias=self.bias[i]))
 
