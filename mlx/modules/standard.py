@@ -116,6 +116,157 @@ class MLP(torch.nn.Module):
         return self.layers(x)
 
 
+class GroupedLinear(torch.nn.Module):
+    def __init__(
+            self,
+            in_features: int,
+            out_features: int,
+            groups: int,
+            bias: bool = True,
+            device=None,
+            dtype=None
+    ):
+        """
+        :param in_features: Number of input features
+        :param out_features: Number of output features
+        :param groups: Number of groups. Must divide both in_features and
+            out_features
+        :param bias: Whether to use a learnable bias
+        :param device: Optional device on which to allocate the parameters
+        :param dtype: Optional data type with which tot allocate the parameters
+        """
+        super().__init__()
+
+        self.in_features = in_features
+        self.out_features = out_features
+        self.groups = groups
+        assert in_features % groups == 0, 'groups must divide in_features'
+        assert out_features % groups == 0, 'groups must divide out_features'
+
+        self.weight = torch.nn.Parameter(torch.empty((in_features, out_features // groups)))
+        kwargs = {'device': device, 'dtype': dtype}
+        if bias:
+            self.bias = torch.nn.Parameter(torch.empty((out_features,), **kwargs))
+        else:
+            self.bias = None
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        torch.nn.init.kaiming_uniform_(self.weight, a=5**.5)
+        if self.bias is not None:
+            bound = 1 / self.in_features**.5
+            torch.nn.init.uniform_(self.bias, -bound, bound)
+
+    def forward(self, x):
+        """
+        :param x: (..., in_features) input data
+        :return: (..., out_features) output data
+        """
+        w = self.weight.view(self.in_features // self.groups, self.groups, -1)
+        # (in_features//groups, groups, out_features//groups)
+
+        original_shape = x.shape[:-1]
+        x = x.reshape(-1, self.in_features // self.groups, self.groups)
+        # (B, in_features//groups, groups)
+
+        x = torch.einsum('...ig,igo->...go', x, w)
+        # (B, groups, out_features//groups)
+
+        x = x.reshape(*original_shape, self.out_features)
+        # (..., out_features)
+
+        if self.bias is not None:
+            x = x + self.bias
+            # (..., out_features)
+
+        return x
+
+
+class StackedMLP(torch.nn.Module):
+    def __init__(
+            self,
+            d_in: int,
+            hidden_layers: Sequence[int],
+            d_out: int,
+            num_units: int,
+            activation: Sequence[Mapping] | Mapping,
+            bias: Sequence[bool] | bool = True,
+            norm: Sequence[Mapping] | Mapping | None = None,
+            dropout: Sequence[float] | float | None = None,
+            order: str = 'nad'
+    ):
+        """
+        A stack of multi-layer perceptrons applied separately.
+        :param d_in: input dimension
+        :param hidden_layers: sequence of integers giving hidden dimensions;
+            number of layers = len(hidden_layers) + 1
+        :param d_out: output dimension
+        :param num_units: number of individual units in the stack
+        :param bias: Whether to use bias in the linear layers. Either a list of
+            per-layer values or one to apply to all layers. Default = True.
+        :param activation: Activation function config or per-layer list of
+            configs to apply in hidden layers (list of size len(hidden_layers)).
+        :param norm: Normalization config to apply for each hidden layer; either
+            a layer-by-layer list (of size len(hidden_layers)), or one value to
+            apply to all layers, or None for no normalization. Default = None.
+        :param dropout: Dropout rate for dropout applied after each hidden layer;
+            either a layer-by-layer list (of size len(hidden_layers)), or one
+            value to apply to all layers. None for no dropout. Default = None.
+        :param order: Order in which to apply activation, dropout and
+            normalization (if the latter two are specified) as a string of the
+            characters 'a', 'd', 'n'. Default = 'nad', that is,
+            normalization, activation, dropout
+        """
+        super().__init__()
+
+        # Save parameters
+        self.d_in = d_in
+        self.d_out = d_out
+        self.hidden_layers = tuple(hidden_layers)
+        self.num_units = num_units
+        self.order = order
+
+        # Construct layers
+        layers = []
+        self.activation = _make_sequence(activation, len(self.hidden_layers))
+        self.bias = _make_sequence(bias, len(self.hidden_layers) + 1)
+        self.norm = _make_sequence(norm, len(self.hidden_layers))
+        self.dropout = _make_sequence(dropout, len(self.hidden_layers))
+
+        architecture = (d_in,) + self.hidden_layers + (d_out,)
+        for i, (d_in, d_out) in enumerate(zip(architecture[:-1], architecture[1:])):
+            if i == 0:
+                # First layer is regular linear; this duplicates the input for each group
+                layers.append(torch.nn.Linear(d_in, d_out * num_units, bias=self.bias[i]))
+            else:
+                layers.append(GroupedLinear(d_in, d_out * num_units, num_units, bias=self.bias[i]))
+
+            if i < len(self.hidden_layers):
+                post_layer_modules = {'a': mlx.create_module(self.activation[i])}
+
+                if self.norm[i] is not None:
+                    post_layer_modules['n'] = mlx.create_module(self.norm[i])
+
+                if self.dropout[i] is not None:
+                    post_layer_modules['d'] = torch.nn.Dropout(self.dropout[i])
+
+                for module in order:
+                    if module in post_layer_modules:
+                        layers.append(post_layer_modules[module])
+
+        # Save layers as Sequential module
+        self.layers = torch.nn.Sequential(*layers)
+
+    def forward(self, x):
+        """
+        :param x: (..., d_in)
+        :return: (..., d_out, num_units)
+        """
+        y = self.layers(x)  # (..., d_out * num_units)
+        return y.reshape(*x.shape[:-1], self.d_out, self.num_units)
+
+
 class RelativeL2Loss(torch.nn.Module):
     def __init__(self, squared=True):
         super().__init__()
