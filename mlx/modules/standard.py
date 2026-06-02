@@ -45,6 +45,15 @@ def _make_sequence(data, size):
         return [data] * size
 
 
+class Reshape(torch.nn.Module):
+    def __init__(self, *shape):
+        super().__init__()
+        self.shape = shape
+
+    def forward(self, x):
+        return x.reshape(self.shape)
+
+
 class MLP(torch.nn.Module):
     def __init__(
             self,
