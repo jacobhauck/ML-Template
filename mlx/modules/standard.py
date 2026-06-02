@@ -176,7 +176,7 @@ class StackedLinear(torch.nn.Module):
         :return: (..., num_units, out_features) output data
         """
 
-        x = torch.einsum('...ui,uio->...uo', x, w)
+        x = torch.einsum('...ui,uio->...uo', x, self.weight)
         # (..., num_units, out_features)
 
         if self.bias is not None:
@@ -184,6 +184,9 @@ class StackedLinear(torch.nn.Module):
             # (..., num_units, out_features)
 
         return x
+
+    def extra_repr(self):
+        return f'in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}'
 
 
 class StackedMLP(torch.nn.Module):
