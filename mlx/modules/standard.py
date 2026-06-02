@@ -116,21 +116,21 @@ class MLP(torch.nn.Module):
         return self.layers(x)
 
 
-class GroupedLinear(torch.nn.Module):
+class StackedLinear(torch.nn.Module):
     def __init__(
             self,
             in_features: int,
             out_features: int,
-            groups: int,
+            num_units: int,
             bias: bool = True,
             device=None,
             dtype=None
     ):
         """
+        A stack of linear layers
         :param in_features: Number of input features
         :param out_features: Number of output features
-        :param groups: Number of groups. Must divide both in_features and
-            out_features
+        :param num_units: Number of individual linear layers
         :param bias: Whether to use a learnable bias
         :param device: Optional device on which to allocate the parameters
         :param dtype: Optional data type with which tot allocate the parameters
@@ -139,46 +139,40 @@ class GroupedLinear(torch.nn.Module):
 
         self.in_features = in_features
         self.out_features = out_features
-        self.groups = groups
-        assert in_features % groups == 0, 'groups must divide in_features'
-        assert out_features % groups == 0, 'groups must divide out_features'
+        self.num_units = num_units
 
-        self.weight = torch.nn.Parameter(torch.empty((in_features, out_features // groups)))
         kwargs = {'device': device, 'dtype': dtype}
+        self.weight = torch.nn.Parameter(
+            torch.empty((num_units, in_features, out_features), **kwargs)
+        )
+
         if bias:
-            self.bias = torch.nn.Parameter(torch.empty((out_features,), **kwargs))
+            self.bias = torch.nn.Parameter(
+                torch.empty((num_units, out_features), **kwargs)
+            )
         else:
             self.bias = None
 
         self.reset_parameters()
 
     def reset_parameters(self):
-        torch.nn.init.kaiming_uniform_(self.weight, a=5**.5)
+        bound = 1 / self.in_features**.5
+        torch.nn.init.uniform_(self.weight, -bound, bound)
         if self.bias is not None:
-            bound = 1 / self.in_features**.5
             torch.nn.init.uniform_(self.bias, -bound, bound)
 
     def forward(self, x):
         """
-        :param x: (..., in_features) input data
-        :return: (..., out_features) output data
+        :param x: (..., num_units, in_features) input data
+        :return: (..., num_units, out_features) output data
         """
-        w = self.weight.view(self.in_features // self.groups, self.groups, -1)
-        # (in_features//groups, groups, out_features//groups)
 
-        original_shape = x.shape[:-1]
-        x = x.reshape(-1, self.in_features // self.groups, self.groups)
-        # (B, in_features//groups, groups)
-
-        x = torch.einsum('...ig,igo->...go', x, w)
-        # (B, groups, out_features//groups)
-
-        x = x.reshape(*original_shape, self.out_features)
-        # (..., out_features)
+        x = torch.einsum('...ui,uio->...uo', x, w)
+        # (..., num_units, out_features)
 
         if self.bias is not None:
             x = x + self.bias
-            # (..., out_features)
+            # (..., num_units, out_features)
 
         return x
 
@@ -240,7 +234,7 @@ class StackedMLP(torch.nn.Module):
                 # First layer is regular linear; this duplicates the input for each group
                 layers.append(torch.nn.Linear(d_in, d_out * num_units, bias=self.bias[i]))
             else:
-                layers.append(GroupedLinear(d_in, d_out * num_units, num_units, bias=self.bias[i]))
+                layers.append(StackedLinear(d_in, d_out, num_units, bias=self.bias[i]))
 
             if i < len(self.hidden_layers):
                 post_layer_modules = {'a': mlx.create_module(self.activation[i])}
