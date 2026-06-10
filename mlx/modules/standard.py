@@ -45,15 +45,6 @@ def _make_sequence(data, size):
         return [data] * size
 
 
-class Reshape(torch.nn.Module):
-    def __init__(self, *shape):
-        super().__init__()
-        self.shape = shape
-
-    def forward(self, x):
-        return x.reshape(self.shape)
-
-
 class MLP(torch.nn.Module):
     def __init__(
             self,
@@ -185,9 +176,6 @@ class StackedLinear(torch.nn.Module):
 
         return x
 
-    def extra_repr(self):
-        return f'in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}'
-
 
 class StackedMLP(torch.nn.Module):
     def __init__(
@@ -205,9 +193,8 @@ class StackedMLP(torch.nn.Module):
         """
         A stack of multi-layer perceptrons applied separately.
         :param d_in: input dimension
-        :param hidden_layers: sequence of integers giving hidden dimensions
-            (for each unit in the stack, not the sum of all units); number of
-            layers = len(hidden_layers) + 1
+        :param hidden_layers: sequence of integers giving hidden dimensions;
+            number of layers = len(hidden_layers) + 1
         :param d_out: output dimension
         :param num_units: number of individual units in the stack
         :param bias: Whether to use bias in the linear layers. Either a list of
@@ -246,7 +233,6 @@ class StackedMLP(torch.nn.Module):
             if i == 0:
                 # First layer is regular linear; this duplicates the input for each group
                 layers.append(torch.nn.Linear(d_in, d_out * num_units, bias=self.bias[i]))
-                # Manually unflatten the last dimension for use with StackedLinear
                 layers.append(torch.nn.Unflatten(-1, (num_units, d_out)))
             else:
                 layers.append(StackedLinear(d_in, d_out, num_units, bias=self.bias[i]))
@@ -272,7 +258,7 @@ class StackedMLP(torch.nn.Module):
         :param x: (..., d_in)
         :return: (..., num_units, d_out)
         """
-        return self.layers(x)  # (..., num_units, d_out)
+        return self.layers(x)
 
 
 class RelativeL2Loss(torch.nn.Module):
