@@ -177,7 +177,8 @@ class StackedLinear(torch.nn.Module):
         return x
 
     def extra_repr(self):
-        return f'in_features={self.in_features}, out_features={self.out_features}, num_units={self.num_units}, bias={self.bias}'
+        return (f'in_features={self.in_features}, out_features={self.out_features}, '
+                f'num_units={self.num_units}, bias={self.bias is not None}')
 
 
 class StackedMLP(torch.nn.Module):
