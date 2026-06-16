@@ -188,6 +188,7 @@ class StackedMLP(torch.nn.Module):
             d_out: int,
             num_units: int,
             activation: Sequence[Mapping] | Mapping,
+            dense_initial: bool = True,
             bias: Sequence[bool] | bool = True,
             norm: Sequence[Mapping] | Mapping | None = None,
             dropout: Sequence[float] | float | None = None,
@@ -200,6 +201,8 @@ class StackedMLP(torch.nn.Module):
             number of layers = len(hidden_layers) + 1
         :param d_out: output dimension
         :param num_units: number of individual units in the stack
+        :param dense_initial: Whether to use a densely-connected first layer.
+            If False, then num_units must divide d_in. Default = True
         :param bias: Whether to use bias in the linear layers. Either a list of
             per-layer values or one to apply to all layers. Default = True.
         :param activation: Activation function config or per-layer list of
@@ -235,8 +238,14 @@ class StackedMLP(torch.nn.Module):
         for i, (d_in, d_out) in enumerate(zip(architecture[:-1], architecture[1:])):
             if i == 0:
                 # First layer is regular linear; this duplicates the input for each group
-                layers.append(torch.nn.Linear(d_in, d_out * num_units, bias=self.bias[i]))
-                layers.append(torch.nn.Unflatten(-1, (num_units, d_out)))
+                if dense_initial:
+                    layers.append(torch.nn.Linear(d_in, d_out * num_units, bias=self.bias[i]))
+                    layers.append(torch.nn.Unflatten(-1, (num_units, d_out)))
+                else:
+                    assert d_in % num_units == 0, \
+                        'If using dense_initial == False, then d_in must be divisible by num_units'
+                    layers.append(torch.nn.Unflatten(-1, (num_units, d_in // num_units)))
+                    layers.append(StackedLinear(d_in // num_units, d_out, num_units, bias=self.bias[i]))
             else:
                 layers.append(StackedLinear(d_in, d_out, num_units, bias=self.bias[i]))
 
