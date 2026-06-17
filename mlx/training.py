@@ -232,6 +232,8 @@ class BaseTrainer(ABC):
                 print(f'Training steps: {self.num_steps(epochs_left)}')
         
         try:
+            self.on_training_start()
+
             for epoch in range(epochs_left):
                 if self.verbosity >= Verbosity.VERBOSE.value:
                     print(f'Starting epoch {epoch}')
@@ -265,8 +267,6 @@ class BaseTrainer(ABC):
                                 self.lr_scheduler is not None:
                             self.lr_scheduler.step()
 
-
-
         except KeyboardInterrupt as e:
             selection = self.get_interruption_selection()
 
@@ -276,6 +276,8 @@ class BaseTrainer(ABC):
         if self.verbosity >= Verbosity.NORMAL.value:
             print(f'Saving final checkpoint')
         self.save_checkpoint()
+
+        self.on_training_finish()
     
     def evaluate(self, datasets=('train',)):
         self.model.train(False)
@@ -283,6 +285,8 @@ class BaseTrainer(ABC):
         losses_by_dataset = {}
         metrics_by_dataset = {}
         for name in datasets:
+            self.on_evaluation_start()
+
             all_losses = {}
             all_metrics = {}
             data_loader = torch.utils.data.DataLoader(self.datasets[name], batch_size=1)
@@ -303,7 +307,9 @@ class BaseTrainer(ABC):
             
             losses_by_dataset[name] = {key: torch.tensor(value) for key, value in all_losses.items()}
             metrics_by_dataset[name] = {key: torch.tensor(value) for key, value in all_metrics.items()}
-        
+
+            self.on_evaluation_finish()
+
         return losses_by_dataset, metrics_by_dataset
     
     # noinspection PyMethodMayBeStatic
@@ -347,3 +353,17 @@ class BaseTrainer(ABC):
             DataLoader with key 'train' will be used for training
         """
         raise NotImplemented
+
+    # ======= Events ========
+
+    def on_training_start(self):
+        pass
+
+    def on_training_finish(self):
+        pass
+
+    def on_evaluation_start(self):
+        pass
+
+    def on_evaluation_finish(self):
+        pass
