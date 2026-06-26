@@ -300,3 +300,68 @@ class RelativeL2Loss(torch.nn.Module):
 
     def __repr__(self):
         return f'RelativeL2Loss(squared={self.squared})'
+
+
+class Sine(torch.nn.Module):
+    # noinspection PyMethodMayBeStatic
+    def forward(self, x):
+        return torch.sin(x)
+
+
+class SIREN(MLP):
+    def __init__(
+            self,
+            d_in: int,
+            hidden_layers: Sequence[int],
+            d_out: int,
+            scale: float | None = None,
+            scale_all: bool = False,
+            bias: Sequence[bool] | bool = True,
+            dropout: Sequence[float] | float | None = None,
+            order: str = 'ad'
+    ):
+        super().__init__(
+            d_in=d_in,
+            hidden_layers=hidden_layers,
+            d_out=d_out,
+            activation={'name': 'Sine'},
+            bias=bias,
+            norm=None,
+            dropout=dropout,
+            order=order
+        )
+
+        self.scale = scale
+        self.scale_all = scale_all
+        self._last_linear = 0
+        for i in range(len(self.layers)):
+            if isinstance(self.layers[i], torch.nn.Linear):
+                self._last_linear = i
+
+        self._initialize()
+
+    def _initialize(self):
+        is_first = True
+        for layer in self.layers:
+            if not isinstance(layer, torch.nn.Linear):
+                continue
+
+            if self.scale is not None and self.scale_all and not is_first:
+                c = (6 / layer.in_features) **.5 / self.scale
+            else:
+                c = (6 / layer.in_features) ** .5
+            torch.nn.init.uniform_(layer.weight, -c, c)
+            is_first = False
+
+    def forward(self, x):
+        if self.scale is None:
+            return super().forward(x)
+        elif not self.scale_all:
+            return super().forward(self.scale * x)
+        else:
+            for i, layer in enumerate(self.layers):
+                if i != self._last_linear and isinstance(layer, torch.nn.Linear):
+                    x = self.scale * x
+                x = layer(x)
+
+            return x

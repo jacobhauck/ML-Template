@@ -1,0 +1,10 @@
+model:
+  name: SIREN
+  d_in: 2
+  d_out: 3
+  hidden_layers: [128, 128, 128, 128, 128]
+  scale: 10
+  scale_all: true
+
+image_file: experiments/siren/thermal_raw.png
+iterations: 500
