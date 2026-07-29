@@ -241,6 +241,8 @@ class BaseTrainer(ABC):
                 if self.verbosity >= Verbosity.VERY_VERBOSE.value:
                     print(f'Total data seen {self.data_seen}')
 
+                self.on_epoch_start(epoch)
+
                 for batch, data in enumerate(self.data_loaders['train']):
                     # Delay keyboard interrupts until the end of a training step
                     with DelayedKeyboardInterrupt():
@@ -266,6 +268,8 @@ class BaseTrainer(ABC):
                         if batch == len(self.data_loaders['train']) - 1 and \
                                 self.lr_scheduler is not None:
                             self.lr_scheduler.step()
+
+                self.on_epoch_finish(epoch)
 
         except KeyboardInterrupt as e:
             selection = self.get_interruption_selection()
@@ -366,4 +370,10 @@ class BaseTrainer(ABC):
         pass
 
     def on_evaluation_finish(self):
+        pass
+
+    def on_epoch_start(self, epoch):
+        pass
+
+    def on_epoch_finish(self, epoch):
         pass
