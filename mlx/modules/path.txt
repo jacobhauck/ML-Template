@@ -1,2 +1,1 @@
 operatorlearning.modules
-neuralop.models
