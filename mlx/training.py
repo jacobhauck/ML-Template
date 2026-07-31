@@ -156,7 +156,7 @@ class BaseTrainer(ABC):
             print(f'Saved checkpoint on step {self.run.step}')
 
     def load_checkpoint(self, step):
-        state = torch.load(self.checkpoint_path(step, True))
+        state = torch.load(self.checkpoint_path(step, True), weights_only=False)
 
         self.data_seen = state['data_seen']
 
