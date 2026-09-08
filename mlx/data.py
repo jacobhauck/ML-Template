@@ -51,11 +51,15 @@ class DatasetLibrary:
             ALTER TABLE datasets ADD COLUMN {name} {sql_type}
         ''')
         self.db.commit()
-
+    
+    def properties(self):
+        cur = self.db.cursor()
+        return [row[1] for row in cur.execute('PRAGMA table_info(datasets)').fetchall()]
+    
     def create_dataset(self, **properties):
         try:
             cur = self.db.cursor()
-            existing_props = set(row[1] for row in cur.execute('PRAGMA table_info(datasets)').fetchall())
+            existing_props = set(self.properties())
             for name, value in properties.items():
                 if name not in existing_props:
                     self.add_property(name, dtype=type(value))
@@ -88,9 +92,16 @@ class DatasetLibrary:
             raise e
     
     def export(self, file_name):
-        output = [list(row[1] for row in self.db.execute('PRAGMA table_info(datasets)').fetchall())]
+        output = [self.properties()]
         for row in self.db.execute('SELECT * FROM datasets').fetchall():
             output.append(row)
 
         with open(file_name, 'w', newline='') as f:
             csv.writer(f).writerows(output)
+
+    def __getitem__(self, dataset_id):
+        cur = self.db.cursor()
+        prop_names = self.properties()
+        prop_str = ', '.join(prop_names)
+        prop_values = cur.execute(f'SELECT {prop_str} FROM datasets WHERE id = ?', (dataset_id,)).fetchone()
+        return {name: value for name, value in zip(prop_names, prop_values)}
