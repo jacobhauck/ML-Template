@@ -95,9 +95,14 @@ class LocalRun:
 
             with open(self.step_file) as f:
                 self.step = int(f.read())
-            
+
+            resume_data = config.get('resume_data')
+
             with open(self.step_file + '.config.yaml') as f:
                 self.config = yaml.safe_load(f)
+
+            if resume_data is not None:
+                self.config['resume_data'] = resume_data
 
     @property
     def step_file(self):
@@ -153,7 +158,10 @@ class WandBExperiment(Experiment):
                 id=run_id,
                 resume='must'
             )
+            resume_data = config.get('resume_data')
             config = run.config
+            if resume_data is not None:
+                config['resume_data'] = resume_data
         else:
             api = wandb.Api()
             runs = api.runs(
