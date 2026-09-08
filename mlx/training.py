@@ -67,6 +67,7 @@ class BaseTrainer(ABC):
             no_data=False,
             save_interval=None,
             log_interval=None,
+            initial_step=None,
             verbosity=1
     ):
         self.run = run
@@ -105,7 +106,9 @@ class BaseTrainer(ABC):
         if self.verbosity >= Verbosity.VERBOSE.value:
             print(f'{len(self.datasets)} datasets loaded')
 
-        if self.run.step is not None and self.run.step > 0:
+        if initial_step is not None:
+            self.load_checkpoint(initial_step)
+        elif self.run.step is not None and self.run.step > 0:
             self.load_checkpoint(self.run.step)
 
     def checkpoint_path(self, step=None, must_exist=False):
