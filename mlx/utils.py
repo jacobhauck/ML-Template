@@ -1,4 +1,5 @@
 import random
+import os
 
 
 def subset_indices(config, dataset):
@@ -15,3 +16,13 @@ def subset_indices(config, dataset):
     else:
         size = sample_cfg.get('size', len(dataset))
         return list(range(size))
+
+
+def results_dir(name, sub_path=None):
+    output_dir = os.path.join('results', name)
+    if sub_path is not None:
+        output_dir = os.path.join(output_dir, sub_path)
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    return output_dir
