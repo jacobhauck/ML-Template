@@ -26,3 +26,14 @@ def results_dir(name, sub_path=None):
     os.makedirs(output_dir, exist_ok=True)
 
     return output_dir
+
+
+def show_and_save(fig, file_name, config, name, sub_path=None):
+    import matplotlib.pyplot as plt
+
+    if config.get('show', False):
+        plt.show()
+
+    ext = config.get('format', 'png')
+    output_file = os.path.join(results_dir(name, sub_path), file_name + '.' + ext)
+    fig.savefig(output_file, bbox_inches='tight')
