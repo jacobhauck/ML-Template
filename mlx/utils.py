@@ -37,3 +37,4 @@ def show_and_save(fig, file_name, config, name, sub_path=None):
     ext = config.get('format', 'png')
     output_file = os.path.join(results_dir(name, sub_path), file_name + '.' + ext)
     fig.savefig(output_file, bbox_inches='tight')
+    print(f'Saved figure: {output_file}')
