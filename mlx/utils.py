@@ -27,6 +27,30 @@ def results_dir(name, sub_path=None):
 
     return output_dir
 
+def configure_plotting(config):
+    import matplotlib.pyplot as plt
+
+    if 'fonts' in config:
+        fonts = config['fonts']
+        if 'size' in fonts:
+            plt.rc('font', size=fonts['size'])  # controls default text sizes
+        if 'axis_title_size' in fonts:
+            plt.rc('axes', titlesize=fonts['axis_title_size'])  # font size of the axes title
+        if 'axis_label_size' in fonts:
+            plt.rc('axes', labelsize=fonts['axis_label_size'])  # font size of the x and y labels
+        if 'xtick_size' in fonts:
+            plt.rc('xtick', labelsize=fonts['xtick_size'])  # font size of the tick labels
+        if 'ytick_size' in fonts:
+            plt.rc('ytick', labelsize=fonts['ytick_size'])  # font size of the tick labels
+        if 'legend_size' in fonts:
+            plt.rc('legend', fontsize=fonts['legend_size'])  # legend font size
+        if 'fig_title_size' in fonts:
+            plt.rc('figure', titlesize=fonts['fig_title_size'])  # font size of the figure title
+        if 'family' in fonts:
+            plt.rc('font', family=fonts['family'])
+        if 'use_tex' in fonts:
+            plt.rc('text', usetex=fonts['use_tex'])
+
 
 def show_and_save(fig, file_name, config, name, sub_path=None):
     import matplotlib.pyplot as plt

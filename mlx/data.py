@@ -23,6 +23,11 @@ class DatasetLibrary:
         self.root = os.path.join('data', name)
         self.ext = ext
         os.makedirs(self.root, exist_ok=True)
+        
+        if not os.path.exists(os.path.join(self.root, '.gitignore')):
+            with open(os.path.join(self.root, '.gitignore'), 'w') as f:
+                f.write('*')
+                
         self.db = sqlite3.connect(os.path.join(self.root, 'library.db'))
         tables = self.db.execute("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()
         if ('datasets',) not in tables:
@@ -50,13 +55,13 @@ class DatasetLibrary:
         return found
     
     def add_property(self, name, dtype=float):
-        if dtype not in (int, float, str):
-            raise ValueError('Invalid dtype; choose from int, float or str.')
+        if dtype not in (int, float, str, bool):
+            raise ValueError(f'Invalid dtype for property {name}; choose from int, float or str, or bool.')
 
         cur = self.db.cursor()
-        sql_type = {int: 'INTEGER', float: 'REAL', str: 'TEXT'}[dtype]
+        sql_type = {int: 'INTEGER', float: 'REAL', str: 'TEXT', bool: 'BOOLEAN'}[dtype]
         cur.execute(f'''
-            ALTER TABLE datasets ADD COLUMN {name} {sql_type}
+            ALTER TABLE datasets ADD COLUMN "{name}" {sql_type}
         ''')
         self.db.commit()
     
@@ -75,7 +80,7 @@ class DatasetLibrary:
                     self.add_property(name, dtype=type(value))
 
             sql = 'INSERT INTO datasets ('
-            sql += ', '.join(name for name in flat_properties)
+            sql += ', '.join('"' + name + '"' for name in flat_properties)
             sql += ') VALUES ('
             sql += ', '.join('?' * len(flat_properties))
             sql += ')'

@@ -72,34 +72,38 @@ def create_module(config: Mapping):
         # Standard torch module
         import torch
         return getattr(torch.nn, name_str)(**config)
-    except AttributeError:
+    except AttributeError as e:
         if debug_search_paths:
             print(f'Module {name_str} not found as torch module')
+            print(e)
 
     try:
         # mlx built-in module
         return getattr(mlx.modules, name_str)(**config)
-    except AttributeError:
+    except AttributeError as e:
         if debug_search_paths:
             print(f'Module {name_str} not found as mlx module')
+            print(e)
 
     # Global import
     try:
         name = name_str.split('.')
         py_module = importlib.import_module('.'.join(name[:-1]))
         return getattr(py_module, name[-1])(**config)
-    except (ModuleNotFoundError, ValueError):
+    except (AttributeError, ModuleNotFoundError, ValueError) as e:
         if debug_search_paths:
             print(f'Module {name_str} not found as global import')
+            print(e)
 
     # User-defined module in modules
     try:
         name = ['modules'] + name_str.split('.')
         py_module = importlib.import_module('.'.join(name[:-1]))
         return getattr(py_module, name[-1])(**config)
-    except (ModuleNotFoundError, AttributeError):
+    except (ModuleNotFoundError, AttributeError) as e:
         if debug_search_paths:
             print(f'Module {name_str} not found in local `modules` folder')
+            print(e)
 
     # User-defined module in added module path
     added_path = _module_file_path()
@@ -114,8 +118,9 @@ def create_module(config: Mapping):
             name = path.split('.') + name_str.split('.')
             py_module = importlib.import_module('.'.join(name[:-1]))
             return getattr(py_module, name[-1])(**config)
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as e:
             if debug_search_paths:
                 print(f'Module {name_str} not found in custom path: {path}')
+                print(e)
 
     raise ValueError('Invalid Module')
