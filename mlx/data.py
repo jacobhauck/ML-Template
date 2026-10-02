@@ -10,6 +10,14 @@ def as_sql(value):
         return str(value)
 
 
+def flatten_properties(properties, prefix, flattened):
+    for name, value in properties.items():
+        if isinstance(value, dict):
+            flatten_properties(value, prefix + name + '.', flattened)
+        else:
+            flattened[prefix + name] = value
+
+
 class DatasetLibrary:
     def __init__(self, name, ext):
         self.root = os.path.join('data', name)
@@ -57,19 +65,21 @@ class DatasetLibrary:
         return [row[1] for row in cur.execute('PRAGMA table_info(datasets)').fetchall()]
     
     def create_dataset(self, **properties):
+        flat_properties = {}
+        flatten_properties(properties, '', flat_properties)
         try:
             cur = self.db.cursor()
             existing_props = set(self.properties())
-            for name, value in properties.items():
+            for name, value in flat_properties.items():
                 if name not in existing_props:
                     self.add_property(name, dtype=type(value))
 
             sql = 'INSERT INTO datasets ('
-            sql += ', '.join(name for name in properties)
+            sql += ', '.join(name for name in flat_properties)
             sql += ') VALUES ('
-            sql += ', '.join('?' * len(properties))
+            sql += ', '.join('?' * len(flat_properties))
             sql += ')'
-            dataset_id = cur.execute(sql, tuple(properties.values())).lastrowid
+            dataset_id = cur.execute(sql, tuple(flat_properties.values())).lastrowid
             self.db.commit()
 
         except Exception as e:
