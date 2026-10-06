@@ -8,8 +8,10 @@ Classes
     - WandBExperiment: base class for all experiments that are logged to W&B
 """
 import abc
+import inspect
 import os
 import uuid
+import warnings
 from typing import Mapping
 
 import wandb
@@ -20,6 +22,7 @@ import mlx
 
 CHECKPOINT_DIR = 'checkpoints'
 LOCAL_RUNS_DIR = os.path.join(CHECKPOINT_DIR, 'local')
+warn_unused_group = True
 
 
 if os.path.exists('wandb_config.yaml'):
@@ -67,7 +70,13 @@ class Experiment(abc.ABC):
 def experiment(run_fn):
     class _Experiment(Experiment):
         def run(self, config: Mapping, name: str, group: str | None = None) -> None:
-            run_fn(config, name, group)
+            if 'group' in inspect.signature(run_fn).parameters:
+                run_fn(config, name, group=group)
+            elif group is None:
+                run_fn(config, name)
+            elif warn_unused_group:
+                warnings.warn('Group provided but experiment does not use it. Set '
+                              'mlx.experiments.warn_unused_group = False to suppress this warning.')
     
     return _Experiment
 
