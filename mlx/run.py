@@ -57,7 +57,7 @@ class ParseConfiguration(argparse.Action):
             key, val = value.split('=', 1)
             try:
                 final_value = eval(val.strip())
-            except NameError:
+            except Exception:
                 final_value = val.strip()
 
             keys = key.split('.')
