@@ -117,6 +117,6 @@ class DatasetLibrary:
     def __getitem__(self, dataset_id):
         cur = self.db.cursor()
         prop_names = self.properties()
-        prop_str = ', '.join(prop_names)
+        prop_str = ', '.join(map(lambda name: f'"{name}"', prop_names))
         prop_values = cur.execute(f'SELECT {prop_str} FROM datasets WHERE id = ?', (dataset_id,)).fetchone()
         return {name: value for name, value in zip(prop_names, prop_values)}
