@@ -28,9 +28,40 @@ import argparse
 import copy
 import importlib
 import os
-from typing import Sequence
+from typing import Sequence, Mapping
 
 import mlx
+
+
+def _assign_key_value(keys, value, data, level):
+    if len(keys) - level == 1:
+        data[keys[level]] = value
+    else:
+        if keys[level] not in data:
+            data[keys[level]] = {}
+        _assign_key_value(keys, value, data[keys[level]], level + 1)
+
+
+class ParseConfiguration(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not hasattr(namespace, 'extra_config'):
+            namespace.extra_config = {}
+
+        for value in values:
+            if '=' not in value:
+                raise argparse.ArgumentError(
+                    self,
+                    f"Invalid format; must be key=value."
+                )
+
+            key, val = value.split('=', 1)
+            try:
+                final_value = eval(val.strip())
+            except NameError:
+                final_value = val.strip()
+
+            keys = key.split('.')
+            _assign_key_value(keys, final_value, namespace.extra_config, 0)
 
 
 def _run_cli():
@@ -65,20 +96,35 @@ def _run_cli():
         default=None
     )
 
+    parser.add_argument(
+        '--config',
+        help='Optional configuration to override the loaded configuration. '
+             'Use "." to set nested values, for example, a.b sets sub-property b '
+             'of property a. Pass arguments using key=value format.',
+        action=ParseConfiguration,
+        nargs='*'
+    )
+
     args = parser.parse_args()
 
     # Add cwd to path so that imports work correctly
     import sys
     sys.path.insert(0, os.getcwd())
 
-    run_experiment(args.name, args.configs, args.group, args.in_group)
+    if hasattr(args, 'extra_config'):
+        extra_config = args.extra_config
+    else:
+        extra_config = None
+
+    run_experiment(args.name, args.configs, args.group, args.in_group, extra_config)
 
 
 def run_experiment(
         name: str,
         configs: Sequence[str | os.PathLike] | None = None,
         group: str | os.PathLike | None = None,
-        in_group: str | os.PathLike | None = None
+        in_group: str | os.PathLike | None = None,
+        extra_config: Mapping | None = None
 ):
     """
     Runs an experiment or a group of experiments.
@@ -93,6 +139,9 @@ def run_experiment(
         in the directory, with the configuration options for that run being
         overridden by the corresponding configuration file.
     :param in_group: Optional name of group to apply to this experiment.
+    :param extra_config: Optional dictionary of extra configuration values to
+        apply after all other configuration values have been applied (including
+        group member configuration).
     """
     # Handle no configs specified and convert to list so that we can prepend the
     # default config
@@ -148,6 +197,8 @@ def run_experiment(
 
     # Run experiment/experiment group
     if group is None:
+        if extra_config is not None:
+            mlx.config.config_update_recursive(base_config, extra_config, default_option='add')
         experiment.run(base_config, name=name, group=in_group)
     else:
         # Load group configurations
@@ -171,6 +222,8 @@ def run_experiment(
             # subsequent ones
             run_config = copy.deepcopy(base_config)
             mlx.config.config_update_recursive(run_config, config, default_option='add')
+            if extra_config is not None:
+                mlx.config.config_update_recursive(run_config, extra_config, default_option='add')
             experiment.run(run_config, name=name, group=group)
         experiment.finish_group()
 
